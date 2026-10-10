@@ -1,0 +1,29 @@
+{% extends "buyer_base.html" %}
+{% block content %}
+<div class="card">
+  <div class="split">
+    <h2>My suppliers</h2><div class="spacer"></div>
+    <a class="btn ghost" href="/buyer/search">Find a supplier</a>
+  </div>
+  <table class="table">
+    <thead><tr><th>Supplier</th><th>Reference</th><th>Category</th><th>Crit.</th>
+      <th>Country</th><th>LEI</th><th>State</th><th class="num">Records</th></tr></thead>
+    <tbody>
+    {% for s in suppliers %}
+      <tr>
+        <td><a href="/buyer/suppliers/{{ s.link_id }}">{{ s.legal_name }}</a></td>
+        <td class="mono small">{{ s.internal_reference or '—' }}</td>
+        <td class="small">{{ s.category or '—' }}</td>
+        <td class="num small">{{ s.criticality }}</td>
+        <td class="mono small">{{ s.country }}</td>
+        <td class="mono small">{{ s.lei or '—' }}</td>
+        <td><span class="pill {{ 'good' if s.link_state == 'connected' else 'warn' if s.link_state == 'requested' else 'muted' }}">{{ s.link_state }}</span></td>
+        <td class="num">{{ s.documents or '' }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="8" class="table-empty">Your supply base is empty.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

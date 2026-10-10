@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ page_title|default('Dashboard') }}{% endblock %} · Trusted Supplier Program</title>
+<link rel="stylesheet" href="/static/css/brata.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%231F3A70'/><rect x='7' y='9' width='18' height='4' fill='%233E6FB0'/><rect x='7' y='16' width='12' height='4' fill='%23fff'/></svg>">
+</head>
+<body>
+{% macro ladder(level, size='') %}
+  {% set n = {'L0':0,'L1':1,'L2':2,'L3':3,'L4':4}.get(level, 0) %}
+  <span class="assurance" title="Assurance {{ level }} — {{ assurance_name(level) }}">
+    <span class="ladder {{ level|lower }} {{ size }}">
+      {% for i in range(5) %}<i class="{{ 'on' if i <= n and n > 0 or (n==0 and i==0) else '' }}"></i>{% endfor %}
+    </span>
+    <span class="lvl">{{ level }}</span>
+  </span>
+{% endmacro %}
+
+{% macro status_chip(status) %}
+  {% set map = {
+    'valid': ('ok','Valid'), 'expiring_soon': ('warn','Expiring soon'),
+    'expired': ('bad','Expired'), 'suspended': ('bad','Suspended'),
+    'withdrawn': ('neutral','Withdrawn'), 'missing': ('neutral','No version'),
+    'in_review': ('info','In review'), 'active': ('ok','Active'),
+    'draft': ('neutral','Draft'), 'scheduled': ('info','Scheduled'),
+    'superseded': ('neutral','Superseded'), 'revoked': ('bad','Revoked'),
+    'open': ('warn','Open'), 'approved': ('ok','Approved'), 'denied': ('bad','Denied'),
+    'met': ('ok','Met'), 'partially_met': ('warn','Partially met'),
+    'not_met': ('bad','Not met'), 'not_applicable': ('neutral','N/A'),
+    'offboarded': ('neutral','Offboarded'), 'closed': ('neutral','Closed'),
+    'closing': ('warn','Closing'), 'done': ('ok','Done')
+  } %}
+  {% set tone, label = map.get(status, ('neutral', status|replace('_',' ')|title)) %}
+  <span class="chip {{ tone }}">{{ label }}</span>
+{% endmacro %}
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark"><span class="dot"></span> Trusted Supplier Program</div>
+      <div class="sub">{{ buyer.name if buyer else "Supply base" }} · Buyer</div>
+    </div>
+    <nav class="nav">
+      <div class="group-label">Sourcing</div>
+      <a href="/buyer" class="{{ 'active' if nav == 'home' }}">Overview</a>
+      <a href="/buyer/search" class="{{ 'active' if nav == 'search' }}">Find a supplier</a>
+      <a href="/buyer/suppliers" class="{{ 'active' if nav == 'suppliers' }}">My suppliers
+        {% if counts.total %}<span class="count">{{ counts.total }}</span>{% endif %}</a>
+      <a href="/buyer/requests" class="{{ 'active' if nav == 'requests' }}">Access requests
+        {% if counts.open_requests %}<span class="count warn">{{ counts.open_requests }}</span>{% endif %}</a>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="who">{{ user.full_name if user else '' }}</div>
+      <div><a href="/logout">Sign out</a> · <a href="/docs">API docs</a></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <div class="crumb">{{ crumb|default('TSP') }}</div>
+        <h1>{% block heading %}{{ page_title|default('Dashboard') }}{% endblock %}</h1>
+      </div>
+      <div class="spacer"></div>
+      {% block topbar_actions %}{% endblock %}
+    </header>
+
+    <main class="content">
+      {% if break_glass %}
+      <div class="break-glass-bar">
+        <div><b>Platform support session in progress.</b>
+          {{ break_glass.admin_email }} is acting as {{ user.email }} — reason:
+          {{ break_glass.reason }}{% if break_glass.ticket_reference %} ({{ break_glass.ticket_reference }}){% endif %}.
+          Ends {{ break_glass.expires_at.strftime('%H:%M') }}.</div>
+        <form method="post" action="/admin/break-glass/end">
+          <button class="btn small danger" type="submit">End session</button></form>
+      </div>
+      {% endif %}
+      {% for category, message in flashes %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+</body>
+</html>

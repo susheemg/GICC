@@ -1,0 +1,59 @@
+{% extends "buyer_base.html" %}
+{% block content %}
+<div class="card">
+  <h2>Find a supplier</h2>
+  <form method="get" action="/buyer/search" class="split wrap">
+    <input type="text" name="q" value="{{ query }}" placeholder="Company name, registry number or LEI"
+           style="flex:3" autofocus required minlength="{{ min_query }}">
+    <input type="text" name="country" value="{{ country }}" placeholder="Country"
+           maxlength="2" style="text-transform:uppercase;max-width:110px">
+    <button class="btn" type="submit">Search</button>
+  </form>
+  <p class="small muted">Results show public-register identity only. What a supplier
+  holds — and whether it is current — is theirs to disclose, so you will not see a
+  document count or a score before they share.</p>
+</div>
+
+{% if limited %}
+<div class="card"><div class="callout bad">{{ limited }}</div></div>
+{% endif %}
+
+{% if searched and not limited %}
+<div class="card">
+  <div class="split">
+    <h3>{{ results|length }} result{{ '' if results|length == 1 else 's' }}</h3>
+    <div class="spacer"></div>
+    <span class="small muted">{{ counts.searches_today }} searches in the last 24 hours</span>
+  </div>
+  <table class="table">
+    <thead><tr><th>Company</th><th>Country</th><th>Registry number</th><th>LEI</th>
+      <th>Location</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for r in results %}
+      <tr>
+        <td><a href="/buyer/companies/{{ r.id }}">{{ r.legal_name }}</a>
+          {% if r.trading_name %}<div class="small muted">trading as {{ r.trading_name }}</div>{% endif %}</td>
+        <td class="mono small">{{ r.country }}</td>
+        <td class="mono small">{{ r.registry_number or '—' }}</td>
+        <td class="mono small">{{ r.lei or '—' }}</td>
+        <td class="small muted">{{ r.locality or '—' }}</td>
+        <td>{% if r.claimed %}<span class="pill good">on TSP</span>
+            {% else %}<span class="pill warn">not joined</span>{% endif %}</td>
+        <td>
+          {% if r.link_id %}<span class="small muted">in your base</span>
+          {% else %}
+          <form method="post" action="/buyer/suppliers">
+            <input type="hidden" name="organisation_id" value="{{ r.id }}">
+            <button class="btn ghost small" type="submit">Add</button></form>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="table-empty">Nothing matched. Try the registry number,
+        or check the country filter.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

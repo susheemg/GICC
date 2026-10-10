@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack">
+  <div class="card"><div class="body">
+    <form method="get" class="field-row" style="margin-bottom:0">
+      <div class="field" style="margin-bottom:0"><label for="q">Search {{ total }} document types</label>
+        <input id="q" name="q" value="{{ q }}" placeholder="ISO 27001, insurance, licence…"></div>
+      <div class="field" style="margin-bottom:0"><label for="domain">Domain</label>
+        <select id="domain" name="domain"><option value="">All 13 domains</option>
+          {% for code, label in domains.items() %}<option value="{{ code }}" {{ 'selected' if domain == code }}>{{ code }} — {{ label }}</option>{% endfor %}
+        </select></div>
+    </form>
+    <div style="margin-top:12px"><button class="btn secondary small" onclick="this.closest('.body').querySelector('form').submit()">Apply</button>
+      <a class="btn small secondary" href="/documents/catalogue">Reset</a></div>
+  </div></div>
+
+  {% if recommended %}
+  <div class="note">Highlighted types are the ones your published requirement profiles ask for
+    and you do not currently hold.</div>
+  {% endif %}
+
+  {% for code, types in grouped.items() %}
+  <div class="card">
+    <header><h2>{{ code }} — {{ domains[code] }}</h2><span class="spacer"></span>
+      <span class="small muted">{{ types|length }} types</span></header>
+    <table>
+      <thead><tr><th>Code</th><th>Document type</th><th>Typical issuer</th><th>Validity</th>
+        <th>Verification</th><th>Sens.</th><th></th></tr></thead>
+      <tbody>
+      {% for dtype in types %}
+        <tr {% if dtype.code in recommended %}style="background:var(--steel-soft)"{% endif %}>
+          <td class="mono small nowrap">{{ dtype.code }}</td>
+          <td>{{ dtype.name }}{% if dtype.code in recommended %}
+            <span class="chip info plain small" style="margin-left:6px">asked for</span>{% endif %}</td>
+          <td class="small">{{ dtype.typical_issuer }}</td>
+          <td class="small nowrap">{{ dtype.validity_label }}</td>
+          <td class="small">{{ dtype.verification_route|replace('_',' ') }}</td>
+          <td><span class="sens {{ dtype.sensitivity }}">{{ dtype.sensitivity }}</span></td>
+          <td class="right nowrap">
+            {% if dtype.id in held %}
+              <a class="btn small secondary" href="/documents/{{ held[dtype.id].id }}">Held</a>
+            {% else %}
+              <form method="post" action="/documents/create" style="display:inline">
+                <input type="hidden" name="type_code" value="{{ dtype.code }}">
+                <button class="btn small" type="submit">Add</button></form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody></table>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="grid sidebar-right">
+  <div class="card"><header><h2>Version {{ next_no }} · {{ document.title }}</h2></header><div class="body">
+    <form method="post" action="/documents/{{ document.id }}/versions" enctype="multipart/form-data">
+      <div class="field"><label for="file">Certificate file <span class="hint">PDF, image or Office document, up to 25 MB</span></label>
+        <input id="file" name="file" type="file"></div>
+
+      <div class="note" style="margin-bottom:14px">Fields below are pre-filled from the catalogue
+        as <b>proposals</b>. Nothing is stored as fact until you confirm it — that is the whole
+        point of the confirmation step.</div>
+
+      <div class="field-row c3">
+        <div class="field"><label for="issue_date">Issued</label>
+          <input id="issue_date" name="issue_date" type="date" value="{{ hint.issue_date }}"></div>
+        <div class="field"><label for="effective_from">Effective from <span class="hint">future date schedules it</span></label>
+          <input id="effective_from" name="effective_from" type="date" value="{{ hint.issue_date }}"></div>
+        <div class="field"><label for="expiry_date">Expires</label>
+          <input id="expiry_date" name="expiry_date" type="date" value="{{ hint.expiry_date or '' }}"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="certificate_number">Certificate / registration number</label>
+          <input id="certificate_number" name="certificate_number"></div>
+        <div class="field"><label for="issuer_name">Issuing authority</label>
+          <input id="issuer_name" name="issuer_name" value="{{ hint.issuer_name }}"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="holder_name">Named holder <span class="hint">as printed on the certificate</span></label>
+          <input id="holder_name" name="holder_name" value="{{ org.legal_name }}"></div>
+        <div class="field"><label for="cover_amount">Cover amount <span class="hint">insurance only</span></label>
+          <input id="cover_amount" name="cover_amount" placeholder="5000000"></div>
+      </div>
+      <div class="field"><label for="scope_statement">Scope statement</label>
+        <textarea id="scope_statement" name="scope_statement" placeholder="What the certificate actually covers"></textarea></div>
+      <div class="field"><label for="verification_url">Issuing-agency authentication link
+        {% if dtype.verification_required %}<span class="hint">expected for this type</span>{% endif %}</label>
+        <input id="verification_url" name="verification_url" type="url"
+               placeholder="https://www.iafcertsearch.org/verification/…"></div>
+      {% if next_no > 1 %}
+      <div class="field"><label for="change_reason">What changed <span class="hint">required from version 2</span></label>
+        <input id="change_reason" name="change_reason" placeholder="Recertification audit completed"></div>
+      {% endif %}
+      <div class="check"><input type="checkbox" id="publish" name="publish" value="1" checked>
+        <label for="publish" style="margin:0">Publish now and run verification</label></div>
+      <button class="btn" type="submit">Save version {{ next_no }}</button>
+      <a class="btn secondary" href="/documents/{{ document.id }}">Cancel</a>
+    </form>
+  </div></div>
+
+  <div class="stack">
+    <div class="card"><header><h3>{{ dtype.code }}</h3></header><div class="body">
+      <dl class="dl small">
+        <dt>Domain</dt><dd>{{ dtype.domain_name }}</dd>
+        <dt>Typical issuer</dt><dd>{{ dtype.typical_issuer }}</dd>
+        <dt>Typical validity</dt><dd>{{ dtype.validity_label }}</dd>
+        <dt>Verification route</dt><dd>{{ dtype.verification_route|replace('_',' ') }}</dd>
+        <dt>Sensitivity</dt><dd><span class="sens {{ dtype.sensitivity }}">{{ dtype.sensitivity }}</span> {{ sensitivity_name(dtype.sensitivity) }}</dd>
+        <dt>Criticality</dt><dd>{{ dtype.criticality }} of 5</dd>
+      </dl>
+    </div></div>
+    <div class="card"><header><h3>How to reach L3</h3></header><div class="body">
+      <p class="small">Record the certificate number, the issuing authority and a holder name that
+        matches your registered entity. A verification run that matches all three against an
+        authoritative source reaches <b>L3</b>. Missing any one of them stops at L1.</p>
+      <div class="split" style="margin-top:10px">{{ ladder('L3','lg') }}</div>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

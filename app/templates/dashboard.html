@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block topbar_actions %}
+  <a class="btn secondary" href="/documents/catalogue">Add a document</a>
+  <a class="btn" href="/clients">Share with a client</a>
+{% endblock %}
+{% block content %}
+<div class="stack">
+
+  {% if tenant.lifecycle_state == 'closing' %}
+  <div class="flash warn"><b>Closure in progress.</b> Clients have been told access ends 30 days
+    from the request. <a href="/lifecycle">Cancel the closure</a> if this was not intended.</div>
+  {% endif %}
+
+  {% if guide and not guide.complete and not guide.dismissed %}
+  <a href="/start" class="card pad quiet-link" style="display:flex;align-items:center;gap:16px">
+    <div style="flex:1">
+      <div style="font-weight:600">Set-up {{ guide.done }} of {{ guide.total }} done{% if next_step %} · next: {{ next_step.title }}{% endif %}</div>
+      <div class="meter" style="margin-top:8px;max-width:360px"><span style="width:{{ guide.percent }}%"></span></div>
+    </div>
+    <span class="btn small">Continue</span>
+  </a>
+  {% endif %}
+
+  <div class="grid c4">
+    <div class="kpi"><div class="label">Readiness</div>
+      <div class="value {{ 'ok' if tenant.readiness_score >= 70 else ('warn' if tenant.readiness_score >= 40 else 'bad') }}">{{ tenant.readiness_score }}<span style="font-size:16px">%</span></div>
+      <div class="meter {{ 'ok' if tenant.readiness_score >= 70 else ('warn' if tenant.readiness_score >= 40 else 'bad') }}" style="margin-top:8px"><span style="width:{{ tenant.readiness_score }}%"></span></div>
+      <div class="foot">Weighted by criticality, assurance and freshness</div></div>
+    <div class="kpi"><div class="label">Credentials held</div>
+      <div class="value">{{ total_docs }}</div>
+      <div class="foot">{{ status_counts.valid }} valid · {{ status_counts.expiring_soon }} expiring · {{ status_counts.expired + status_counts.suspended }} broken</div></div>
+    <div class="kpi"><div class="label">Machine-verified</div>
+      <div class="value {{ 'ok' if (assurance_counts.L3 + assurance_counts.L4) > 0 else '' }}">{{ assurance_counts.L3 + assurance_counts.L4 }}</div>
+      <div class="foot">L3+ of {{ total_docs }} · L0 {{ assurance_counts.L0 }} · L1 {{ assurance_counts.L1 }} · L2 {{ assurance_counts.L2 }}</div></div>
+    <div class="kpi"><div class="label">Client health</div>
+      <div class="value {{ tone }}">{{ health }}</div>
+      <div class="foot">{{ band }} · {{ grants|length }} live grants</div></div>
+  </div>
+
+  {% set milestones_open = not (milestones.m1 and milestones.m2 and milestones.m3) %}
+  {% if milestones_open %}
+  <div class="card"><header><h2>Activation milestones</h2>
+    <span class="spacer"></span><span class="small muted">The three moments that decide whether this is worth keeping</span></header>
+    <div class="body"><div class="grid c3">
+      {% for key, label, detail, action, href in [
+        ('m1','First verified credential','A credential reaching L3 or L4','Run verification','/verification'),
+        ('m2','First client grant','Somebody outside relying on your profile','Add a client','/clients'),
+        ('m3','First client read','A buyer actually opening a document','Create a share link','/clients')] %}
+      <div style="border:1px solid var(--border);padding:14px;border-radius:var(--radius-sm)">
+        <div class="split" style="justify-content:space-between">
+          <b>{{ label }}</b>
+          {% if milestones[key] %}<span class="chip ok">Reached</span>{% else %}<span class="chip neutral">Not yet</span>{% endif %}
+        </div>
+        <p class="small muted" style="margin:6px 0 10px">{{ detail }}</p>
+        {% if not milestones[key] %}<a class="btn small secondary" href="{{ href }}">{{ action }}</a>{% endif %}
+      </div>
+      {% endfor %}
+    </div></div>
+  </div>
+  {% endif %}
+
+  <div class="grid sidebar-right">
+    <div class="stack">
+      <div class="card">
+        <header><h2>What is broken</h2><span class="spacer"></span>
+          <a class="small" href="/documents?status=expired">Full register</a></header>
+        {% if attention %}
+        <table>
+          <thead><tr><th>Credential</th><th>Status</th><th>Assurance</th><th class="num">Expiry</th><th></th></tr></thead>
+          <tbody>
+          {% for row in attention %}
+            <tr>
+              <td><a href="/documents/{{ row.document.id }}">{{ row.document.title }}</a>
+                <div class="small muted mono">{{ row.type.code }}</div></td>
+              <td>{{ status_chip(row.document.derived_status) }}</td>
+              <td>{% if row.version %}{{ ladder(row.version.assurance_level) }}{% else %}<span class="muted small">—</span>{% endif %}</td>
+              <td class="num nowrap">{% if row.version and row.version.expiry_date %}{{ row.version.expiry_date|d }}
+                <div class="small {{ 'muted' if row.days and row.days > 30 else '' }}">{{ row.days }} days</div>{% else %}—{% endif %}</td>
+              <td class="right"><a class="btn small secondary" href="/documents/{{ row.document.id }}/versions/new">Replace</a></td>
+            </tr>
+          {% endfor %}
+          </tbody></table>
+        {% else %}<div class="table-empty">Nothing expired, suspended or expiring inside 90 days.</div>{% endif %}
+      </div>
+
+    </div>
+
+    <div class="stack">
+      {# Signals belong with the gaps they explain; one quiet column, not two cards. #}
+      <div class="card"><header><h3>Worth knowing</h3></header>
+        {% if signals %}
+        <div class="body" style="padding-bottom:4px">
+          {% for signal in signals %}<div class="note warn" style="margin-bottom:8px">{{ signal }}</div>{% endfor %}
+        </div>
+        {% endif %}
+        {% if gaps %}
+        <table><tbody>
+          {% for gap in gaps %}
+          <tr><td><b class="mono small">{{ gap.code }}</b><div class="small">{{ gap.name }}</div></td>
+            <td class="right"><span class="chip warn plain">{{ gap.demanded_by }} profile{{ 's' if gap.demanded_by != 1 }}</span></td></tr>
+          {% endfor %}
+        </tbody></table>
+        <div class="body"><a class="btn small secondary" href="/requirements">See requirement fit</a></div>
+        {% else %}<div class="table-empty small">No gaps against the published requirement profiles.</div>{% endif %}
+      </div>
+
+      <div class="card"><header><h3>Open tasks</h3></header>
+        {% if open_tasks %}
+        <table><tbody>
+          {% for task in open_tasks %}
+          <tr><td>{{ task.title }}<div class="small muted">due {{ task.due_at|d }}</div></td>
+            <td class="right"><span class="chip {{ 'bad' if task.severity == 'high' else 'warn' }} plain">{{ task.severity }}</span></td></tr>
+          {% endfor %}
+        </tbody></table>
+        {% else %}<div class="table-empty small">Nothing outstanding.</div>{% endif %}
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,94 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ q }} · Trusted Supplier Program</title>
+<link rel="stylesheet" href="/static/css/brata.css">
+<style>
+  .r-top{display:flex;align-items:center;gap:18px;padding:12px 26px;
+    border-bottom:1px solid rgba(60,60,67,.1);position:sticky;top:0;z-index:5;
+    background:rgba(255,255,255,.76);-webkit-backdrop-filter:saturate(180%) blur(18px);backdrop-filter:saturate(180%) blur(18px)}
+  .r-word{font-size:16px;font-weight:600;color:#1F3A70;white-space:nowrap}
+  .r-word .dot{width:9px;height:9px;background:#C8A227;display:inline-block;
+    margin-right:8px;border-radius:2px}
+  .r-field{display:flex;align-items:center;border:1px solid rgba(60,60,67,.18);border-radius:999px;
+    padding:9px 16px;flex:1;max-width:560px;background:#fff;transition:box-shadow .26s var(--ease)}
+  .r-field:focus-within{box-shadow:0 4px 18px rgba(31,58,112,.12)}
+  .r-field input{border:0 !important;outline:0;flex:1;font-size:14px;background:transparent !important;
+    color:#22314B;box-shadow:none !important;padding:0 !important;margin:0;height:auto;min-height:0}
+  .r-body{max-width:760px;padding:22px 26px 60px}
+  .r-item{padding:16px 14px;margin:0 -14px;border-radius:12px;transition:background .16s}
+  .r-item:hover{background:rgba(0,0,0,.028)}
+  .r-body{animation:rise .3s var(--ease) both}
+  .r-name{font-size:16px;color:#1F3A70;font-weight:600;text-decoration:none}
+  .r-name:hover{text-decoration:underline}
+  .r-meta{color:#6F84A8;font-size:12.5px;margin-top:3px}
+  .star{color:#C8A227;font-size:15px}
+  .member-badge{background:#FBF5E4;color:#8A6D12;border:1px solid #EAD9A6;
+    padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:600;
+    letter-spacing:.03em;text-transform:uppercase}
+</style></head><body>
+<div class="r-top">
+  <a href="/" class="r-word" style="text-decoration:none"><span class="dot"></span>TSP</a>
+  <form method="get" action="/search" style="flex:1;display:flex">
+    <div class="r-field">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9AAAC2"
+           stroke-width="2" style="margin-right:9px;flex:none">
+        <circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+      <input name="q" value="{{ q }}" placeholder="Supplier name" aria-label="Supplier name">
+    </div>
+  </form>
+  {% if not signed_in %}
+  <a class="btn secondary small" href="/?panel=login">Sign in</a>
+  <a class="btn small" href="/?panel=register">Register</a>
+  {% else %}
+  <a class="btn ghost small" href="/dashboard">My workspace</a>
+  {% endif %}
+</div>
+
+<div class="r-body">
+  {% if q and q|length < min_query %}
+    <p class="muted">Type at least {{ min_query }} characters.</p>
+  {% elif not outcome.results %}
+    <p class="muted">Nothing matched “{{ q }}”.</p>
+    <p class="small muted">Try the registered company name, or the company number.
+      If you are the company and cannot find yourself,
+      <a href="/claim">claim your profile</a>.</p>
+  {% else %}
+    <div class="small muted" style="margin-bottom:6px">
+      {{ outcome.results|length }} result{{ '' if outcome.results|length == 1 else 's' }}
+      {% if outcome.members %}· {{ outcome.members }} registered with the programme{% endif %}
+      · source: {{ outcome.provider }}
+    </div>
+
+    {% for r in outcome.results %}
+    <div class="r-item">
+      <div class="split" style="align-items:flex-start">
+        <div>
+          {% if r.member %}<span class="star" title="Registered with the Trusted Supplier Program">★</span>{% endif %}
+          {% if r.id %}
+            <a class="r-name" href="/company/{{ r.id }}">{{ r.name }}</a>
+          {% else %}
+            <span class="r-name">{{ r.name }}</span>
+          {% endif %}
+          {% if r.member %}<span class="member-badge">Trusted Supplier</span>{% endif %}
+          <div class="r-meta">
+            {{ r.jurisdiction }}{% if r.company_number %} · {{ r.company_number }}{% endif %}
+            {% if r.status and r.status != 'Active' %} · <span style="color:#B04848">{{ r.status }}</span>{% endif %}
+            · {{ r.source }}
+          </div>
+          {% if r.member %}
+          <div class="small muted" style="margin-top:4px">
+            Verified credentials held. Sign in to view the profile and request access.</div>
+          {% endif %}
+        </div>
+        <div class="spacer" style="flex:1"></div>
+        {% if r.id %}<a class="btn secondary small" href="/company/{{ r.id }}">Open</a>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+
+    {% if outcome.notice %}
+    <p class="small muted" style="margin-top:18px">{{ outcome.notice }}</p>
+    {% endif %}
+  {% endif %}
+</div>
+</body></html>

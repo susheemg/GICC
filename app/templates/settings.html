@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block content %}
+{% if new_key %}
+<div class="flash warn"><b>Copy this key now — it is not shown again.</b>
+  <div class="mono" style="margin-top:6px;word-break:break-all">{{ new_key }}</div></div>
+{% endif %}
+
+<div class="grid sidebar-right">
+  <div class="stack">
+    <div class="card"><header><h2>API keys</h2></header>
+      {% if api_clients %}
+      <table><thead><tr><th>Name</th><th>Prefix</th><th>Scopes</th><th>Bound grant</th><th>Last used</th><th></th></tr></thead><tbody>
+        {% for client in api_clients %}
+        <tr><td>{{ client.name }}</td>
+          <td class="mono small">{{ client.key_prefix }}…</td>
+          <td class="small">{{ client.scopes }}</td>
+          <td class="small">{{ 'yes — sees only that grant' if client.grant_id else 'first-party' }}</td>
+          <td class="small">{{ client.last_used_at.strftime('%d %b %H:%M') if client.last_used_at else 'never' }}</td>
+          <td class="right">{% if not client.revoked_at %}
+            <form method="post" action="/settings/api-clients/{{ client.id }}/revoke">
+              <button class="btn small danger" type="submit">Revoke</button></form>
+            {% else %}<span class="chip neutral plain">revoked</span>{% endif %}</td></tr>
+        {% endfor %}
+      </tbody></table>
+      {% else %}<div class="table-empty small">No keys yet.</div>{% endif %}
+    </div>
+
+    <div class="card"><header><h2>Machine access</h2></header><div class="body">
+      <p class="small muted">The same permission resolver serves the browser, the REST API and the
+        MCP server. A key bound to a client grant can never see more than that grant.</p>
+      <h3 style="margin-top:14px">REST</h3>
+      <pre class="code">curl -H "X-API-Key: gicc_…" \
+  {{ base_url }}/api/v1/documents
+
+<span class="c"># interactive reference</span>
+{{ base_url }}/docs</pre>
+      <h3 style="margin-top:14px">MCP <span class="small muted">protocol {{ mcp_version }}</span></h3>
+      <pre class="code">curl -X POST {{ base_url }}/mcp \
+  -H "X-API-Key: gicc_…" \
+  -H "Content-Type: application/json" \
+  -H "Mcp-Method: tools/call" -H "Mcp-Name: list_documents" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
+       "params":{"name":"list_documents","arguments":{}}}'</pre>
+      <p class="small muted" style="margin-top:10px">Eight tools, three resources, two prompts.
+        Mutating and NDA-gated calls return <span class="mono">input_required</span> and resume
+        with <span class="mono">inputResponses</span>.</p>
+    </div></div>
+  </div>
+
+  <div class="stack">
+    <div class="card"><header><h3>Create a key</h3></header><div class="body">
+      <form method="post" action="/settings/api-clients">
+        <div class="field"><label for="name">Name</label>
+          <input id="name" name="name" required placeholder="Meridian TPRM agent"></div>
+        <label>Scopes</label>
+        {% for scope, label in [('profile:read','Read the company profile'),
+                                ('documents:read','Read credentials'),
+                                ('verification:read','Read verification records'),
+                                ('requirements:read','Read requirement profiles'),
+                                ('requirements:evaluate','Run conformance checks'),
+                                ('events:subscribe','Read the event feed'),
+                                ('grants:request','Raise access requests')] %}
+        <div class="check"><input type="checkbox" id="s{{ loop.index }}" name="scopes" value="{{ scope }}"
+            {{ 'checked' if scope in ['profile:read','documents:read'] }}>
+          <label for="s{{ loop.index }}" style="margin:0">{{ label }} <span class="mono small muted">{{ scope }}</span></label></div>
+        {% endfor %}
+        <div class="field" style="margin-top:12px"><label for="client_account_id">Bind to a client grant <span class="hint">optional but recommended</span></label>
+          <select id="client_account_id" name="client_account_id"><option value="">First-party — sees the whole register</option>
+            {% for account in client_accounts %}<option value="{{ account.id }}">{{ account.name }}</option>{% endfor %}
+          </select></div>
+        <button class="btn" type="submit">Create key</button>
+      </form>
+    </div></div>
+
+    <div class="card"><header><h3>Users</h3></header>
+      <table><tbody>{% for member in users %}
+        <tr><td>{{ member.full_name }}<div class="small muted">{{ member.email }}</div></td>
+          <td class="right small">{{ member.role }}</td></tr>
+      {% endfor %}</tbody></table>
+    </div>
+  </div>
+</div>
+{% endblock %}

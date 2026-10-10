@@ -1,0 +1,90 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<div class="card">
+  <h2>Profile claims</h2>
+  <p class="muted">A successful claim lets somebody publish credentials as that
+  company. The model contributes at most 10 of 100 points and cannot on its own
+  move a claim between bands.</p>
+</div>
+
+{% for r in rows %}
+<div class="card">
+  <div class="split">
+    <div>
+      <h3>{{ r.organisation.legal_name }}</h3>
+      <div class="muted small">{{ r.organisation.country }}
+        {% if r.organisation.registry_number %}· <span class="mono">{{ r.organisation.registry_number }}</span>{% endif %}
+        · claimed by {{ r.claim.claimant_email }}
+        {% if r.claim.claimant_name %}({{ r.claim.claimant_name }}){% endif %}</div>
+    </div>
+    <div class="spacer"></div>
+    <div style="text-align:right">
+      <div style="font-size:28px;font-weight:600">{{ r.claim.score|round|int }}<span class="muted" style="font-size:14px">/100</span></div>
+      <span class="pill {{ 'good' if r.claim.band == 'auto_approve' else 'warn' }}">{{ r.claim.band }}</span>
+    </div>
+  </div>
+
+  {% if r.contested %}
+  <div class="callout bad"><strong>Contested.</strong> More than one open claim on this
+  profile. Both are held until you decide which is genuine.</div>
+  {% endif %}
+  {% if r.flags %}
+  <div class="callout warn"><strong>Adverse signals:</strong>
+    {% for f in r.flags %}<span class="pill bad">{{ f.replace('_', ' ') }}</span> {% endfor %}
+    <div class="small">Any of these forces review whatever the score.</div>
+  </div>
+  {% endif %}
+
+  <table class="table">
+    <thead><tr><th>Signal</th><th class="num">Points</th><th>Detail</th></tr></thead>
+    <tbody>
+    {% for s in r.signals %}
+      <tr>
+        <td>{{ s.name }}{% if s.get('ai') %} <span class="pill muted">AI</span>{% endif %}{% if s.get('simulated') %} <span class="pill muted">simulated</span>{% endif %}</td>
+        <td class="num">{{ s.points }} / {{ s.max }}</td>
+        <td class="small muted">{{ s.detail }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <details class="small"><summary>Extracted from the evidence ({{ r.claim.evidence_filename }})</summary>
+    <pre class="mono small">{{ r.extracted|tojson(indent=2) }}</pre></details>
+
+  <form method="post" action="/admin/claims/{{ r.claim.id }}/decide" class="stack">
+    <input type="text" name="note" placeholder="Decision note (shown to the claimant on rejection)">
+    <button class="btn" name="decision" value="approve" type="submit">Approve</button>
+    <button class="btn ghost" name="decision" value="reject" type="submit">Reject</button>
+  </form>
+</div>
+{% else %}
+<div class="card"><p class="table-empty">No claims waiting.</p></div>
+{% endfor %}
+
+<div class="card">
+  <h3>Recently decided</h3>
+  <table class="table">
+    <thead><tr><th>Claimant</th><th class="num">Score</th><th>Status</th><th>Decided</th><th></th></tr></thead>
+    <tbody>
+    {% for c in decided %}
+      <tr>
+        <td class="small">{{ c.claimant_email }}</td>
+        <td class="num">{{ c.score|round|int }}</td>
+        <td><span class="pill {{ 'good' if c.status == 'approved' else 'bad' if c.status in ['rejected','reversed'] else 'muted' }}">{{ c.status }}</span></td>
+        <td class="small muted">{{ c.decided_at.strftime('%d %b %Y %H:%M') if c.decided_at else '' }} · {{ c.decided_by or '' }}</td>
+        <td>
+          {% if c.status == 'approved' %}
+          <form method="post" action="/admin/claims/{{ c.id }}/reverse" class="split"
+                onsubmit="return confirm('Reverse this claim? The workspace will be suspended.')">
+            <input type="text" name="reason" placeholder="Reason" required style="max-width:200px">
+            <button class="btn ghost small">Reverse</button></form>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="table-empty">Nothing decided yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block topbar_actions %}
+<form method="post" action="/verification/run-all"><button class="btn" type="submit">Run {{ due_count }} due check{{ 's' if due_count != 1 }}</button></form>
+{% endblock %}
+{% block content %}
+<div class="stack">
+  <div class="card"><header><h2>Assurance distribution</h2><span class="spacer"></span>
+    <span class="small muted">Assurance is a property of a version, recomputed from evidence — never set by hand</span></header>
+    <div class="body"><div class="grid c4" style="gap:12px">
+      {% for level, label in [('L0','Self-declared'),('L1','Source-linked'),('L2','Human-verified'),('L3','Machine-verified'),('L4','Cryptographic')] %}
+      <div style="border:1px solid var(--border);padding:12px">
+        <div class="split">{{ ladder(level) }}</div>
+        <div style="font-size:22px;font-weight:600;color:var(--navy);margin-top:6px">{{ ladder_counts[level] }}</div>
+        <div class="small muted">{{ label }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="note" style="margin-top:14px">A connector outage marks a check stale — it never
+      lowers an assurance level. Only a completed negative result does. This is what stops a
+      third-party outage from downgrading every supplier at once.</div>
+    </div>
+  </div>
+
+  <div class="card"><header><h2>Verification workbench</h2><span class="spacer"></span>
+    <span class="small muted">Weakest and most critical first</span></header>
+    <table>
+      <thead><tr><th>Code</th><th>Credential</th><th>Assurance</th><th>Last result</th>
+        <th>Source</th><th>Next due</th><th></th></tr></thead>
+      <tbody>
+      {% for row in rows %}
+        <tr>
+          <td class="mono small nowrap">{{ row.type.code }}</td>
+          <td><a href="/documents/{{ row.document.id }}">{{ row.document.title }}</a>
+            <div class="small muted">criticality {{ row.type.criticality }}/5</div></td>
+          <td>{{ ladder(row.version.assurance_level) }}</td>
+          <td>{% if row.check %}
+              <span class="chip {{ 'ok' if row.check.result in ['match','link_ok'] else ('bad' if row.check.result in ['no_match','not_found','suspended','withdrawn','expired','link_dead'] else 'warn') }} plain">
+                {{ labels.get(row.check.result, row.check.result) }}</span>
+              {% if row.check.simulated %}<div class="small muted">simulated connector</div>{% endif %}
+            {% else %}<span class="chip neutral plain">never checked</span>{% endif %}</td>
+          <td class="small">{{ row.check.source_code if row.check else '—' }}</td>
+          <td class="small nowrap">{% if row.due %}<span class="chip warn plain">due now</span>
+            {% elif row.check and row.check.next_check_due %}{{ row.check.next_check_due|d }}{% else %}—{% endif %}</td>
+          <td class="right">
+            <form method="post" action="/documents/{{ row.document.id }}/versions/{{ row.version.id }}/verify">
+              <button class="btn small secondary" type="submit">Check</button></form></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="7" class="table-empty">No published versions to verify yet.</td></tr>
+      {% endfor %}
+      </tbody></table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "start_shell.html" import stepper, why, skip %}
+{% block content %}
+{{ stepper(state, 5) }}
+{% if share_token %}
+<div class="flash ok"><b>Share this link with your buyer.</b>
+  <div class="mono" style="margin-top:6px;word-break:break-all">{{ base_url }}/s/{{ share_token }}</div>
+  <div class="small" style="margin-top:6px">Only the hash of this token is stored, so it
+    cannot be shown again. They will identify themselves before the first document opens,
+    and you will see exactly what they read.</div>
+  <div style="margin-top:10px"><a class="btn small" href="/start/done">Finish setup</a></div>
+</div>
+{% endif %}
+
+<div class="grid sidebar-right">
+  <div class="card"><header><h2>{{ meta.title }}</h2></header><div class="body">
+    {{ why(meta) }}
+    <form method="post" action="/start/5">
+      <div class="field"><label for="client_name">Which buyer?</label>
+        <input id="client_name" name="client_name" required
+               placeholder="Meridian Building Society"></div>
+      <div class="field-row">
+        <div class="field"><label for="contact_email">Their contact email <span class="hint">optional</span></label>
+          <input id="contact_email" name="contact_email" type="email"
+                 placeholder="vendorrisk@buyer.example"></div>
+        <div class="field"><label for="contact_name">Contact name</label>
+          <input id="contact_name" name="contact_name"></div>
+      </div>
+      <div class="field"><label for="group_id">Which pack?</label>
+        <select id="group_id" name="group_id" required>
+          {% for group in groups %}
+          <option value="{{ group.id }}" {{ 'selected' if group.code == 'company-basics' }}>
+            {{ group.name }} ({{ group.sensitivity_ceiling }}{{ ', NDA' if group.nda_required }})</option>
+          {% endfor %}
+        </select></div>
+      <div class="field-row">
+        <div class="field"><label for="days">For how long? <span class="hint">capped by the group</span></label>
+          <input id="days" name="days" type="number" value="90" min="1"></div>
+        <div class="field"><label for="purpose">Purpose <span class="hint">shown to them</span></label>
+          <input id="purpose" name="purpose" value="Initial supplier review"></div>
+      </div>
+      <button class="btn" type="submit">Create the grant and share link</button>
+      {{ skip(5, 'No buyer to share with yet') }}
+    </form>
+  </div></div>
+
+  <div class="stack">
+    <div class="card"><header><h3>This is the step that matters</h3></header><div class="body">
+      <p class="small">Everything before this is storage. A grant is the moment somebody
+        outside your company starts relying on your profile — and it is the single event
+        that predicts whether a supplier keeps using a product like this.</p>
+      <p class="small muted" style="margin-top:10px">You can revoke it instantly, and every
+        document they open is logged and shown to you.</p>
+    </div></div>
+    {% if clients %}
+    <div class="card"><header><h3>Buyers already added</h3></header>
+      <table><tbody>
+        {% for client in clients %}
+        <tr><td><a href="/clients/{{ client.id }}">{{ client.name }}</a></td></tr>
+        {% endfor %}
+      </tbody></table>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

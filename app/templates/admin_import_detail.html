@@ -1,0 +1,103 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<div class="card">
+  <div class="split">
+    <div>
+      <h2>{{ batch.filename or batch.id[:8] }}</h2>
+      <div class="muted small">{{ batch.row_count }} row(s) ·
+        <span class="pill {{ 'good' if batch.status == 'committed' else 'warn' }}">{{ batch.status }}</span>
+        {% if batch.committed_at %} · committed {{ batch.committed_at.strftime('%d %b %Y %H:%M') }}{% endif %}
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="stack">
+      <a class="btn ghost" href="/admin/import/{{ batch.id }}/report">Download report</a>
+      {% if batch.status == 'staged' %}
+        <span class="pill warn">awaiting a column mapping</span>
+      {% elif batch.status == 'validated' %}
+        <form method="post" action="/admin/import/{{ batch.id }}/commit"><button class="btn">Commit {{ outcome.get('create', 0) + outcome.get('update', 0) }} row(s)</button></form>
+        <form method="post" action="/admin/import/{{ batch.id }}/discard"><button class="btn ghost">Discard</button></form>
+      {% elif batch.status == 'committed' %}
+        {% if blocker %}
+          <div class="callout warn small">{{ blocker }}</div>
+        {% else %}
+        <form method="post" action="/admin/import/{{ batch.id }}/reverse"
+              onsubmit="return confirm('Remove every unclaimed profile created by this batch?')">
+          <button class="btn danger">Reverse batch</button></form>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% if batch.status == 'staged' %}
+<div class="card">
+  <h3>Confirm the column mapping</h3>
+  <p class="muted small">{{ batch.row_count }} data row(s) read. Nothing has been
+  classified or written yet.</p>
+  <form method="post" action="/admin/import/{{ batch.id }}/validate" class="stack">
+    <table class="table">
+      <thead><tr><th>Field</th><th>Column in your file</th><th>Sample</th></tr></thead>
+      <tbody>
+      {% for field, (label, required) in permitted.items() %}
+        <tr>
+          <td>{{ label }}{% if required %} <span class="pill bad">required</span>{% endif %}</td>
+          <td>
+            <select name="map_{{ field }}">
+              <option value="">— not mapped —</option>
+              {% for col in header %}
+              <option value="{{ loop.index0 }}" {{ 'selected' if mapping.get(field) == loop.index0 }}>{{ col }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td class="small muted mono">
+            {% set idx = mapping.get(field) %}
+            {% if idx is not none and sample and sample|length > idx %}{{ sample[idx] }}{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <button class="btn" type="submit">Run the dry run</button>
+  </form>
+  <p class="small muted">Permitted: {% for f, (label, req) in permitted.items() %}{{ label }}{% if not loop.last %} · {% endif %}{% endfor %}.
+  Contact details, financial figures and risk ratings are refused.</p>
+</div>
+{% endif %}
+
+{% if outcome.get('refused_columns') %}
+<div class="card">
+  <div class="callout warn">
+    <strong>Columns refused at validation</strong>
+    <ul>{% for r in outcome.refused_columns %}<li><span class="mono">{{ r.column }}</span> — {{ r.reason }}</li>{% endfor %}</ul>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="split wrap">
+    <a class="pill-filter {{ 'active' if not classification }}" href="/admin/import/{{ batch.id }}">All</a>
+    {% for k in ['create', 'update', 'skip', 'reject', 'hold'] %}
+    <a class="pill-filter {{ 'active' if classification == k }}" href="/admin/import/{{ batch.id }}?classification={{ k }}">{{ k }} ({{ outcome.get(k, 0) }})</a>
+    {% endfor %}
+  </div>
+  <table class="table">
+    <thead><tr><th class="num">#</th><th>Legal name</th><th>Country</th>
+      <th>Registry number</th><th>Classification</th><th>Reason</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td class="num muted">{{ r.row.position }}</td>
+        <td>{{ r.fields.get('legal_name', '') }}</td>
+        <td class="mono small">{{ r.fields.get('country', '') }}</td>
+        <td class="mono small">{{ r.fields.get('registry_number', '') }}</td>
+        <td><span class="pill {{ 'good' if r.row.classification == 'create' else 'warn' if r.row.classification in ['hold','update'] else 'bad' if r.row.classification == 'reject' else 'muted' }}">{{ r.row.classification }}</span></td>
+        <td class="small muted">{{ r.row.reason }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="table-empty">No rows in this view.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

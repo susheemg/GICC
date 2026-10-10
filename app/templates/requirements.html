@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack">
+  <div class="card"><div class="body">
+    <div class="pill-filter">
+      {% for profile in profiles %}
+      <a href="/requirements?profile_id={{ profile.id }}" class="{{ 'active' if selected and selected.id == profile.id }}">{{ profile.name }}</a>
+      {% endfor %}
+    </div>
+  </div></div>
+
+  {% if selected %}
+  <div class="card">
+    <header><h2>{{ selected.name }}</h2><span class="spacer"></span>
+      <form method="post" action="/requirements/{{ selected.id }}/evaluate">
+        <button class="btn" type="submit">Run evaluation</button></form></header>
+    <div class="body">
+      <p class="small muted">{{ selected.description }} · {{ selected.items|length }} requirements ·
+        {{ selected.sector }} · {{ selected.jurisdiction }}</p>
+      {% if assessment %}
+      <div class="grid c4" style="margin-top:14px">
+        <div class="kpi"><div class="label">Conformance</div>
+          <div class="value {{ 'ok' if assessment.score >= 80 else ('warn' if assessment.score >= 50 else 'bad') }}">{{ assessment.score }}%</div>
+          <div class="foot">weighted by mandatory items</div></div>
+        <div class="kpi"><div class="label">Met</div><div class="value ok">{{ assessment.met_count }}</div></div>
+        <div class="kpi"><div class="label">Gaps</div><div class="value bad">{{ assessment.gap_count }}</div></div>
+        <div class="kpi"><div class="label">Engine</div><div class="value" style="font-size:18px">v{{ assessment.engine_version }}</div>
+          <div class="foot">{{ assessment.assessed_at.strftime('%d %b %Y %H:%M') }}</div></div>
+      </div>
+      {% else %}
+      <div class="note" style="margin-top:12px">Not evaluated yet. Every result will cite the exact
+        document version it read, so the run can be reproduced months later.</div>
+      {% endif %}
+    </div>
+
+    {% if assessment %}
+    <table><thead><tr><th>Code</th><th>Requirement</th><th>Outcome</th><th>Evidence</th></tr></thead><tbody>
+      {% for result in assessment.results %}
+      <tr><td class="mono small">{{ result.type_code }}</td>
+        <td>{{ result.type_name }}</td>
+        <td>{{ status_chip(result.outcome) }}</td>
+        <td class="small">{{ result.explanation }}
+          {% if result.cited_version_id %}<div class="muted mono">version {{ result.cited_version_id[:12] }}…</div>{% endif %}</td></tr>
+      {% endfor %}
+    </tbody></table>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="card"><header><h2>Gaps ranked by how many buyers ask</h2></header>
+    {% if gaps %}
+    <table><thead><tr><th>Code</th><th>Document type</th><th class="num">Profiles asking</th>
+      <th class="num">Criticality</th><th>Status</th><th></th></tr></thead><tbody>
+      {% for gap in gaps %}
+      <tr><td class="mono small">{{ gap.code }}</td>
+        <td>{{ gap.name }}<div class="small muted">{{ gap.profiles|join(', ') }}</div></td>
+        <td class="num"><b>{{ gap.demanded_by }}</b></td>
+        <td class="num">{{ gap.criticality }}/5</td>
+        <td>{{ status_chip(gap.status) }}</td>
+        <td class="right"><form method="post" action="/documents/create">
+          <input type="hidden" name="type_code" value="{{ gap.code }}">
+          <button class="btn small secondary" type="submit">Add</button></form></td></tr>
+      {% endfor %}
+    </tbody></table>
+    {% else %}<div class="table-empty">No gaps against any published profile.</div>{% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,142 @@
+{% extends "admin_base.html" %}
+{% block topbar_actions %}<a class="btn secondary" href="/admin/tenants">All entities</a>{% endblock %}
+{% block content %}
+<div class="grid sidebar-right">
+  <div class="stack">
+    {% if tenant.lifecycle_state == 'suspended' %}
+    <div class="flash bad"><b>Suspended {{ tenant.suspended_at.strftime('%d %b %Y %H:%M') }}.</b>
+      {{ tenant.suspension_reason }}</div>
+    {% endif %}
+
+    <div class="card"><header><h2>Users</h2><span class="spacer"></span>
+      <a class="small" href="/admin/users?tenant_id={{ tenant.id }}">Manage users</a></header>
+      <table><thead><tr><th>User</th><th>Role</th><th>Sensitive</th><th>Last seen</th><th>State</th></tr></thead>
+        <tbody>
+        {% for member in users %}
+        <tr><td>{{ member.full_name }}<div class="small muted">{{ member.email }}</div></td>
+          <td class="small">{{ roles.get(member.role, {}).get('label', member.role) }}</td>
+          <td>{% if member.sensitive_access %}<span class="chip warn plain">C and S</span>
+            {% else %}<span class="chip neutral plain">no</span>{% endif %}</td>
+          <td class="small">{{ member.last_login_at.strftime('%d %b %H:%M') if member.last_login_at else 'never' }}</td>
+          <td>{% if member.is_active %}<span class="chip ok plain">active</span>
+            {% else %}<span class="chip bad plain">disabled</span>{% endif %}</td></tr>
+        {% endfor %}
+      </tbody></table>
+    </div>
+
+    <div class="card"><header><h2>{{ documents|length }} documents</h2><span class="spacer"></span>
+      <span class="small muted">Legal holds are set from here</span></header>
+      <table><thead><tr><th>Code</th><th>Document</th><th>Status</th><th>Assurance</th>
+        <th>Hold</th><th></th></tr></thead><tbody>
+        {% for row in documents %}
+        <tr><td class="mono small">{{ row.type.code }}</td>
+          <td>{{ row.document.title }}</td>
+          <td>{{ status_chip(row.document.derived_status) }}</td>
+          <td>{% if row.version %}{{ ladder(row.version.assurance_level) }}{% else %}—{% endif %}</td>
+          <td>{% if row.document.legal_hold %}
+              <span class="chip bad plain">{{ row.document.hold_placed_by or 'tenant' }}</span>
+              {% else %}<span class="muted small">—</span>{% endif %}</td>
+          <td class="right">
+            <form method="post" action="/admin/tenants/{{ tenant.id }}/hold" class="split">
+              <input type="hidden" name="document_id" value="{{ row.document.id }}">
+              <input type="hidden" name="reason" value="Platform legal hold">
+              <button class="btn small {{ 'danger' if row.document.legal_hold and row.document.hold_placed_by == 'platform' else 'secondary' }}" type="submit">
+                {{ 'Release' if row.document.legal_hold and row.document.hold_placed_by == 'platform' else 'Hold' }}</button>
+            </form></td></tr>
+        {% endfor %}
+      </tbody></table>
+    </div>
+
+    <div class="card"><header><h2>Clients and live grants</h2></header>
+      <table><thead><tr><th>Client</th><th>Relationship</th><th>Status</th></tr></thead><tbody>
+        {% for client in clients %}
+        <tr><td>{{ client.name }}</td><td class="small">{{ client.relationship_type }}</td>
+          <td>{{ status_chip(client.status) }}</td></tr>
+        {% else %}<tr><td colspan="3" class="table-empty small">No clients.</td></tr>
+        {% endfor %}
+      </tbody></table>
+      <div class="body small muted">{{ grants|length }} live grants · {{ keys|length }} API keys</div>
+    </div>
+
+    <div class="card"><header><h2>This entity's log</h2><span class="spacer"></span>
+      {% if intact %}<span class="chip ok">chain intact, {{ checked }} events</span>
+      {% else %}<span class="chip bad">chain broken</span>{% endif %}</header>
+      <table><tbody>
+        {% for event in events %}
+        <tr><td class="small nowrap">{{ event.occurred_at.strftime('%d %b %H:%M') }}</td>
+          <td class="mono small">{{ event.action }}</td>
+          <td class="small muted">{{ event.actor_label or event.actor_kind }}</td></tr>
+        {% endfor %}
+      </tbody></table>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card"><header><h3>Entity</h3></header><div class="body">
+      <dl class="dl small">
+        <dt>Legal name</dt><dd>{{ org.legal_name }}</dd>
+        <dt>Country</dt><dd>{{ org.country }}</dd>
+        <dt>Registry</dt><dd class="mono">{{ org.registry_number or '—' }}</dd>
+        <dt>LEI</dt><dd class="mono">{{ org.lei or '—' }}</dd>
+        <dt>Verification</dt><dd>{{ org.verification_state|replace('_',' ') }}</dd>
+        <dt>Region</dt><dd class="mono">{{ tenant.data_region }}</dd>
+        <dt>Readiness</dt><dd>{{ tenant.readiness_score }}%</dd>
+        <dt>Public page</dt><dd><a href="/t/{{ tenant.slug }}">/t/{{ tenant.slug }}</a></dd>
+      </dl>
+    </div></div>
+
+    <div class="card"><header><h3>Break-glass access</h3></header><div class="body">
+      <p class="small muted">Opens a {{ break_glass_minutes }}-minute session in this workspace.
+        {{ tenant.name }} sees it in their activity log the moment you start.</p>
+      <form method="post" action="/admin/tenants/{{ tenant.id }}/break-glass">
+        <div class="field"><label for="reason">Reason <span class="hint">shown to the tenant</span></label>
+          <input id="reason" name="reason" required placeholder="Investigating a failed upload"></div>
+        <div class="field"><label for="ticket_reference">Ticket reference</label>
+          <input id="ticket_reference" name="ticket_reference" placeholder="SUP-1042"></div>
+        <div class="field"><label for="user_id">Act as</label>
+          <select id="user_id" name="user_id">
+            {% for member in users %}<option value="{{ member.id }}">{{ member.email }}</option>{% endfor %}
+          </select></div>
+        <button class="btn danger" type="submit">Open break-glass session</button>
+      </form>
+      {% if glass %}
+      <table style="margin-top:12px"><tbody>
+        {% for session in glass %}
+        <tr><td class="small">{{ session.started_at.strftime('%d %b %H:%M') }} · {{ session.reason|truncate(40) }}
+          <div class="muted">{{ 'ended ' ~ session.ended_at.strftime('%H:%M') if session.ended_at else 'open' }}</div></td></tr>
+        {% endfor %}
+      </tbody></table>
+      {% endif %}
+    </div></div>
+
+    <div class="card"><header><h3>Enforcement</h3></header><div class="body">
+      {% if tenant.lifecycle_state == 'suspended' %}
+      <form method="post" action="/admin/tenants/{{ tenant.id }}/reinstate">
+        <div class="field"><label for="note">Note</label><input id="note" name="note"></div>
+        <button class="btn" type="submit">Reinstate</button></form>
+      {% else %}
+      <form method="post" action="/admin/tenants/{{ tenant.id }}/suspend">
+        <div class="field"><label for="ground">Ground</label>
+          <select id="ground" name="ground">
+            <option value="sanctions">Sanctions or regulatory</option>
+            <option value="fraud">Suspected forgery</option>
+            <option value="terms_breach">Terms breach</option>
+            <option value="entity_dissolved">Entity dissolved</option>
+          </select></div>
+        <div class="field"><label for="reason">Reason <span class="hint">recorded and shown</span></label>
+          <input id="reason" name="reason" required></div>
+        <button class="btn danger" type="submit">Suspend disclosure</button>
+      </form>
+      <p class="small muted" style="margin-top:10px">Suspension freezes disclosure. It deletes
+        nothing and it is reversible.</p>
+      {% endif %}
+    </div></div>
+
+    <div class="card"><header><h3>Operator note</h3></header><div class="body">
+      <form method="post" action="/admin/tenants/{{ tenant.id }}/note">
+        <div class="field"><textarea name="note" placeholder="Internal only — not shown to the tenant">{{ tenant.admin_note or '' }}</textarea></div>
+        <button class="btn small secondary" type="submit">Save note</button></form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

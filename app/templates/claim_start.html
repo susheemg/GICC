@@ -1,0 +1,83 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claim {{ organisation.legal_name }} · Trusted Supplier Program</title>
+<link rel="stylesheet" href="/static/css/brata.css"></head><body>
+<div class="auth-wrap">
+  <div class="auth-left">
+    <div>
+      <div style="font-size:17px;font-weight:600;display:flex;align-items:center;gap:8px">
+        <span style="width:9px;height:9px;background:#3E6FB0;display:inline-block"></span> Trusted Supplier Program</div>
+      <p class="lede" style="margin-top:40px">What we check, and why</p>
+      <ul>
+        <li>The <b>registry number</b> on your document against the profile</li>
+        <li>The <b>legal name</b> against the profile</li>
+        <li>A <b>registry lookup</b> where one is possible</li>
+        <li>Your <b>email domain</b> against the company website</li>
+        <li>Whether the document is <b>internally consistent</b></li>
+      </ul>
+      <p style="color:#8EA3C4;font-size:12.5px;margin-top:18px">
+        A strong match is approved immediately. Anything short of that goes to a
+        person. We would rather make you wait a day than let somebody publish
+        credentials in your company's name.</p>
+    </div>
+    <div style="font-size:11.5px;color:#6F84A8">A rejected claim can be retried once
+      with better evidence.</div>
+  </div>
+  <div class="auth-right"><div class="auth-card" style="max-width:520px">
+    <h1>{{ organisation.legal_name }}</h1>
+    <p class="muted">{{ organisation.country }}
+      {% if organisation.registry_number %}· <span class="mono">{{ organisation.registry_number }}</span>{% endif %}</p>
+    {% for category, message in flashes %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}
+
+    {% if result %}
+      {% if result.approved %}
+      <div class="callout good">
+        <strong>Approved.</strong> {{ result.organisation }} is now yours. Use
+        <a href="/forgot">password reset</a> to set a password for the email you gave,
+        then sign in.</div>
+      {% elif result.rejected %}
+      <div class="callout bad">
+        <strong>Not approved.</strong> The evidence did not establish that this company
+        is yours. You can try once more with a clearer registration document.</div>
+      {% elif result.contested %}
+      <div class="callout warn">
+        <strong>Someone else has also claimed this profile.</strong> Both claims are
+        held until a reviewer decides. You will hear within two working days.</div>
+      {% else %}
+      <div class="callout warn">
+        <strong>Sent for review.</strong> Score {{ result.score|round|int }}/100. A
+        reviewer will look at this within two working days.</div>
+      {% endif %}
+      <details class="small" style="margin-top:12px"><summary>What we found</summary>
+        <table class="table"><tbody>
+        {% for s in result.signals %}
+          <tr><td>{{ s.name }}</td><td class="num">{{ s.points }}/{{ s.max }}</td>
+            <td class="small muted">{{ s.detail }}</td></tr>
+        {% endfor %}
+        </tbody></table></details>
+      <a class="btn ghost" href="/claim" style="margin-top:14px">Back to search</a>
+
+    {% elif pending %}
+      <div class="callout warn">A claim on this profile is already being reviewed.
+        If that is not you, contact support.</div>
+      <a class="btn ghost" href="/claim">Back to search</a>
+
+    {% else %}
+      <form method="post" action="/claim/{{ organisation.id }}" enctype="multipart/form-data">
+        <div class="field"><label for="claimant_email">Your work email</label>
+          <input id="claimant_email" name="claimant_email" type="email" required autofocus>
+          <div class="small muted">An address on your company's domain scores higher
+            than a personal one.</div></div>
+        <div class="field"><label for="claimant_name">Your name</label>
+          <input id="claimant_name" name="claimant_name" type="text"></div>
+        <div class="field"><label for="evidence">Registration document</label>
+          <input id="evidence" name="evidence" type="file" required
+                 accept=".pdf,.png,.jpg,.jpeg">
+          <div class="small muted">Certificate of incorporation, registry extract, or
+            equivalent. It must show the registry number.</div></div>
+        <button class="btn" type="submit">Submit claim</button>
+      </form>
+    {% endif %}
+  </div></div>
+</div>
+</body></html>

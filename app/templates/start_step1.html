@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "start_shell.html" import stepper, why, skip %}
+{% block content %}
+{{ stepper(state, 1) }}
+<div class="grid sidebar-right">
+  <div class="card"><header><h2>{{ meta.title }}</h2></header><div class="body">
+    {{ why(meta) }}
+    <form method="post" action="/start/1">
+      <div class="field"><label for="legal_name">Registered legal name</label>
+        <input id="legal_name" name="legal_name" value="{{ org.legal_name }}" required></div>
+      <div class="field-row">
+        <div class="field"><label for="trading_name">Trading name <span class="hint">if different</span></label>
+          <input id="trading_name" name="trading_name" value="{{ org.trading_name or '' }}"></div>
+        <div class="field"><label for="country">Country of incorporation</label>
+          <input id="country" name="country" value="{{ org.country }}" maxlength="2"></div>
+      </div>
+      <div class="field"><label for="registry_number">Registry number <span class="hint">optional — you can add it later</span></label>
+        <input id="registry_number" name="registry_number" value="{{ org.registry_number or '' }}"
+               placeholder="09123456"></div>
+      <div class="field"><label for="website">Website</label>
+        <input id="website" name="website" value="{{ org.website or '' }}"></div>
+      <button class="btn" type="submit">Confirm and continue</button>
+      {{ skip(1) }}
+    </form>
+  </div></div>
+  <div class="card"><header><h3>Why the registry number matters</h3></header><div class="body">
+    <p class="small">A certificate names a holder. We compare that name against your
+      registered entity, and a mismatch is the first thing a buyer checks. Without a
+      registry number a credential can still reach L1, but not L3.</p>
+    <div class="split" style="margin-top:12px">{{ ladder('L3','lg') }}</div>
+    <p class="small muted" style="margin-top:10px">Nothing here blocks you. If the lookup
+      fails you can still upload, share and be useful today.</p>
+  </div></div>
+</div>
+{% endblock %}

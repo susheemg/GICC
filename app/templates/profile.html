@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="grid sidebar-right">
+  <div class="card"><header><h2>Legal entity</h2></header><div class="body">
+    <form method="post" action="/profile">
+      <div class="field"><label for="legal_name">Registered legal name</label>
+        <input id="legal_name" name="legal_name" value="{{ org.legal_name }}" required></div>
+      <div class="field-row">
+        <div class="field"><label for="trading_name">Trading name</label>
+          <input id="trading_name" name="trading_name" value="{{ org.trading_name or '' }}"></div>
+        <div class="field"><label for="country">Country of incorporation</label>
+          <input id="country" name="country" value="{{ org.country }}" maxlength="2"></div>
+      </div>
+      <div class="field-row c3">
+        <div class="field"><label for="registry_number">Registry number</label>
+          <input id="registry_number" name="registry_number" value="{{ org.registry_number or '' }}"></div>
+        <div class="field"><label for="lei">LEI</label>
+          <input id="lei" name="lei" value="{{ org.lei or '' }}" maxlength="20"></div>
+        <div class="field"><label for="vat_number">VAT / GST</label>
+          <input id="vat_number" name="vat_number" value="{{ org.vat_number or '' }}"></div>
+      </div>
+      <div class="field-row c3">
+        <div class="field"><label for="duns">D-U-N-S</label>
+          <input id="duns" name="duns" value="{{ org.duns or '' }}"></div>
+        <div class="field"><label for="employees">Employees</label>
+          <input id="employees" name="employees" value="{{ org.employees or '' }}"></div>
+        <div class="field"><label for="annual_turnover">Annual turnover</label>
+          <input id="annual_turnover" name="annual_turnover" value="{{ org.annual_turnover|round|int if org.annual_turnover else '' }}"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="website">Website</label>
+          <input id="website" name="website" value="{{ org.website or '' }}"></div>
+        <div class="field"><label for="sector_code">Sector code</label>
+          <input id="sector_code" name="sector_code" value="{{ org.sector_code or '' }}"></div>
+      </div>
+      <div class="field"><label for="registered_address">Registered address</label>
+        <textarea id="registered_address" name="registered_address">{{ org.registered_address or '' }}</textarea></div>
+      <div class="field"><label for="description">What the company does <span class="hint">shown on your public page</span></label>
+        <textarea id="description" name="description">{{ org.description or '' }}</textarea></div>
+      <button class="btn" type="submit">Save changes</button>
+    </form>
+  </div></div>
+
+  <div class="stack">
+    <div class="card"><header><h3>Entity assurance</h3></header><div class="body">
+      <div class="split" style="margin-bottom:10px">
+        {% if org.verification_state == 'registry_verified' %}<span class="chip ok">Registry verified</span>
+        {% elif org.verification_state == 'lei_bound' %}<span class="chip ok">LEI bound</span>
+        {% else %}<span class="chip neutral">Unverified</span>{% endif %}
+      </div>
+      <p class="small muted">Entity assurance is separate from document assurance. It answers
+        “is this company real and is it the one on the certificate?”</p>
+      <dl class="dl small" style="margin-top:12px">
+        <dt>Data region</dt><dd class="mono">{{ tenant.data_region }} (immutable)</dd>
+        <dt>Public page</dt><dd><a href="/t/{{ tenant.slug }}">/t/{{ tenant.slug }}</a></dd>
+        <dt>Domain</dt><dd>{{ tenant.primary_domain or '—' }}
+          {% if tenant.domain_verified %}<span class="chip ok plain small">verified</span>{% endif %}</dd>
+      </dl>
+    </div></div>
+
+    <div class="card"><header><h3>Identifiers</h3></header>
+      {% if identifiers %}
+      <table><tbody>
+        {% for identifier in identifiers %}
+        <tr><td><b>{{ identifier.kind|upper }}</b><div class="small mono">{{ identifier.value }}</div></td>
+          <td class="right">{% if identifier.verification_state == 'verified' %}<span class="chip ok plain">verified</span>
+            {% else %}<span class="chip neutral plain">unverified</span>{% endif %}</td></tr>
+        {% endfor %}
+      </tbody></table>
+      {% else %}<div class="table-empty small">No separately verified identifiers yet.</div>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

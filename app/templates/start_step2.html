@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "start_shell.html" import stepper, why, skip %}
+{% block content %}
+{{ stepper(state, 2) }}
+<div class="grid sidebar-right">
+  <div class="card"><header><h2>{{ meta.title }}</h2></header><div class="body">
+    {{ why(meta) }}
+    <form method="post" action="/start/2">
+      <div class="field"><label for="sector">What do you do?</label>
+        <select id="sector" name="sector">
+          <option value="">Choose a sector</option>
+          {% for s in sectors %}
+          <option value="{{ s }}" {{ 'selected' if org.sector_code == s }}>{{ s }}</option>
+          {% endfor %}
+        </select></div>
+      <label style="margin-top:14px">Who buys from you? <span class="hint">pick every one that applies</span></label>
+      {% for key, meta_b in buyer_types.items() %}
+      <div class="check" style="align-items:flex-start;padding:8px;border:1px solid var(--border);margin-bottom:6px">
+        <input type="checkbox" id="b{{ key }}" name="buyer_types" value="{{ key }}"
+               {{ 'checked' if key in selected_buyers }}>
+        <label for="b{{ key }}" style="margin:0">
+          <b>{{ meta_b[0] }}</b>
+          <div class="small muted" style="font-weight:400">
+            Typically asks for {{ meta_b[2][:4]|join(', ') }}</div>
+        </label>
+      </div>
+      {% endfor %}
+      <button class="btn" type="submit" style="margin-top:12px">Save and continue</button>
+      {{ skip(2) }}
+    </form>
+  </div></div>
+  <div class="card"><header><h3>This is the only branching question</h3></header><div class="body">
+    <p class="small">It decides which six documents we put in front of you next, instead of
+      showing you all 198 in the catalogue.</p>
+    <p class="small muted" style="margin-top:10px">If you are not sure, pick General
+      commercial. You can change it later and the recommendations move with it.</p>
+  </div></div>
+</div>
+{% endblock %}

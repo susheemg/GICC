@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack">
+  <div class="card"><div class="body">
+    <div class="split" style="justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        {% if intact %}<span class="chip ok">Hash chain intact</span>
+        {% else %}<span class="chip bad">Chain broken at {{ broken }}</span>{% endif %}
+        <span class="small muted" style="margin-left:8px">{{ checked }} events verified.
+          Each row hashes the one before it, so a deleted or edited entry is detectable.</span>
+      </div>
+      <form method="get" class="split">
+        <select name="action" onchange="this.form.submit()" style="width:auto">
+          <option value="">Every action</option>
+          {% for value in actions %}<option value="{{ value }}" {{ 'selected' if selected == value }}>{{ value }}</option>{% endfor %}
+        </select>
+      </form>
+    </div>
+  </div></div>
+
+  <div class="card"><header><h2>{{ events|length }} most recent events</h2></header>
+    <table><thead><tr><th>When</th><th>Action</th><th>Actor</th><th>Object</th><th>Grant</th><th>Detail</th></tr></thead>
+      <tbody>
+      {% for event in events %}
+      <tr><td class="small nowrap">{{ event.occurred_at.strftime('%d %b %Y %H:%M:%S') }}</td>
+        <td class="mono small">{{ event.action }}</td>
+        <td class="small">{{ event.actor_label or '—' }}
+          <div class="muted">{{ event.actor_kind }}</div></td>
+        <td class="small">{{ event.object_type or '—' }}
+          {% if event.object_id %}<div class="muted mono">{{ event.object_id[:10] }}…</div>{% endif %}</td>
+        <td class="small mono">{{ event.grant_id[:8] ~ '…' if event.grant_id else '—' }}</td>
+        <td class="small muted">{{ event.payload|truncate(80) if event.payload else '—' }}</td></tr>
+      {% endfor %}
+      </tbody></table>
+  </div>
+</div>
+{% endblock %}

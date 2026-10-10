@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "start_shell.html" import stepper, why, skip %}
+{% block content %}
+{{ stepper(state, 4) }}
+<div class="grid sidebar-right">
+  <div class="stack">
+    <div class="card"><header><h2>{{ meta.title }}</h2></header><div class="body">
+      {{ why(meta) }}
+      <p>Fourteen groups are already set up for you. A group is what you hand to a buyer,
+        and its policy is a <b>ceiling</b> — a grant can be tighter than the group, never
+        looser.</p>
+      <form method="post" action="/start/4" style="margin-top:14px">
+        <button class="btn" type="submit">These look right — continue</button>
+        {{ skip(4) }}
+      </form>
+    </div></div>
+
+    <div class="card"><header><h2>Your groups</h2></header>
+      <table><thead><tr><th>Group</th><th>Ceiling</th><th>Policy</th><th class="num">Max grant</th></tr></thead>
+        <tbody>
+        {% for group in groups %}
+        <tr><td><a href="/groups/{{ group.id }}">{{ group.name }}</a></td>
+          <td><span class="sens {{ group.sensitivity_ceiling }}">{{ group.sensitivity_ceiling }}</span></td>
+          <td class="small">
+            {% if group.nda_required %}<span class="chip info plain">NDA</span>{% endif %}
+            {% if group.watermark_required %}<span class="chip neutral plain">watermark</span>{% endif %}
+            {% if not group.download_allowed %}<span class="chip warn plain">view only</span>{% endif %}</td>
+          <td class="num">{{ group.max_grant_days }}d</td></tr>
+        {% endfor %}
+      </tbody></table>
+    </div>
+  </div>
+
+  <div class="stack">
+    {% if profiles %}
+    <div class="card"><header><h3>What your buyers ask for</h3></header>
+      <table><tbody>
+        {% for profile in profiles %}
+        <tr><td>{{ profile.name }}<div class="small muted">{{ profile.items|length }} requirements</div></td></tr>
+        {% endfor %}
+      </tbody></table>
+      <div class="body"><a class="btn small secondary" href="/requirements">See how you measure up</a></div>
+    </div>
+    {% endif %}
+    <div class="card"><header><h3>You can change all of this</h3></header><div class="body">
+      <p class="small">Rename groups, change what is in them, tighten a policy. Existing
+        grants keep the terms they were issued under; new grants use the updated ceiling.</p>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block topbar_actions %}
+<form method="post" action="/summary/generate"><button class="btn secondary" type="submit">{{ 'Regenerate' if summary else 'Generate' }}</button></form>
+{% if summary %}<form method="post" action="/summary/publish">
+  <button class="btn" type="submit">{{ 'Unpublish' if summary.published else 'Publish to trust page' }}</button></form>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="grid sidebar-right">
+  <div class="stack">
+    {% if stale %}
+    <div class="flash warn">Your evidence has changed since this summary was written.
+      Regenerate before sharing it.</div>
+    {% endif %}
+    <div class="card">
+      <header><h2>Control summary</h2><span class="spacer"></span>
+        {% if summary %}
+        <span class="chip {{ 'info' if summary.source == 'model' else 'neutral' }}">
+          {{ 'written by model' if summary.source == 'model' else 'assembled from templates' }}</span>
+        {% if summary.published %}<span class="chip ok">public</span>{% endif %}
+        {% endif %}
+      </header>
+      <div class="body">
+        {% if summary %}
+        {% for paragraph in summary.body.split('\n\n') %}<p>{{ paragraph }}</p>{% endfor %}
+        <p class="small muted" style="margin-top:14px">Generated
+          {{ summary.generated_at.strftime('%d %b %Y %H:%M') }} from the credentials held at
+          that moment.</p>
+        {% else %}
+        <div class="table-empty">No summary yet. Generate one from the credentials you hold.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="stack">
+    <div class="card"><header><h3>The rules it follows</h3></header><div class="body">
+      <p class="small">Every sentence is grounded in a credential you actually hold. Nothing
+        is asserted that is not evidenced, unverified evidence is described as <b>claimed</b>
+        rather than demonstrated, and gaps are stated plainly — a summary that hides what is
+        missing is misleading by construction.</p>
+      <dl class="dl small" style="margin-top:12px">
+        <dt>Engine</dt><dd>{{ 'Model — ' ~ ai_status.model if ai_status.enabled else 'Sentence templates' }}</dd>
+        <dt>Default visibility</dt><dd>Private</dd>
+      </dl>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

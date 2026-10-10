@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ page_title|default('Console') }} · TSP platform</title>
+<link rel="stylesheet" href="/static/css/brata.css">
+</head>
+<body class="admin">
+{% macro ladder(level, size='') %}
+  {% set n = {'L0':0,'L1':1,'L2':2,'L3':3,'L4':4}.get(level, 0) %}
+  <span class="assurance"><span class="ladder {{ level|lower }} {{ size }}">
+    {% for i in range(5) %}<i class="{{ 'on' if i <= n and n > 0 or (n==0 and i==0) else '' }}"></i>{% endfor %}
+  </span><span class="lvl">{{ level }}</span></span>
+{% endmacro %}
+{% macro status_chip(status) %}
+  {% set map = {'active':('ok','Active'),'suspended':('bad','Suspended'),
+    'closing':('warn','Closing'),'closed':('neutral','Closed'),
+    'valid':('ok','Valid'),'expiring_soon':('warn','Expiring soon'),
+    'expired':('bad','Expired'),'missing':('neutral','No version'),
+    'revoked':('bad','Revoked')} %}
+  {% set tone, label = map.get(status, ('neutral', status|replace('_',' ')|title)) %}
+  <span class="chip {{ tone }}">{{ label }}</span>
+{% endmacro %}
+
+<div class="shell">
+  <aside class="sidebar admin-sidebar">
+    <div class="brand">
+      <div class="mark"><span class="dot"></span> Trusted Supplier Program</div>
+      <div class="sub" style="color:var(--bad)">Platform console</div>
+    </div>
+    <nav class="nav">
+      <div class="group-label">Operate</div>
+      <a href="/admin" class="{{ 'active' if nav == 'console' }}">Console</a>
+      <a href="/admin/analytics" class="{{ 'active' if nav == 'analytics' }}">Analytics</a>
+      <a href="/admin/tenants" class="{{ 'active' if nav == 'tenants' }}">Entities
+        <span class="count">{{ counts.tenants }}</span></a>
+      <a href="/admin/users" class="{{ 'active' if nav == 'users' }}">Users
+        <span class="count">{{ counts.users }}</span></a>
+      <div class="group-label">Platform</div>
+      <a href="/admin/ai" class="{{ 'active' if nav == 'ai' }}">AI providers</a>
+      <a href="/admin/catalogue" class="{{ 'active' if nav == 'catalogue' }}">Document catalogue</a>
+      <a href="/admin/import" class="{{ 'active' if nav == 'import' }}">Bulk import</a>
+      <a href="/admin/claims" class="{{ 'active' if nav == 'claims' }}">Profile claims
+        {% if counts.claims %}<span class="count warn">{{ counts.claims }}</span>{% endif %}</a>
+      <a href="/admin/proposals" class="{{ 'active' if nav == 'proposals' }}">Type proposals
+        {% if counts.proposals %}<span class="count">{{ counts.proposals }}</span>{% endif %}</a>
+      <a href="/admin/audit" class="{{ 'active' if nav == 'audit' }}">Platform log</a>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="who">{{ admin.full_name }}</div>
+      <div style="font-size:11px">{{ admin.title }}</div>
+      <div><a href="/admin/logout">Sign out</a></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div><div class="crumb">Platform administration</div>
+        <h1>{{ page_title|default('Console') }}</h1></div>
+      <div class="spacer"></div>
+      {% block topbar_actions %}{% endblock %}
+    </header>
+    <main class="content">
+      <div class="admin-strip">Operator mode — you can see and change every entity on this
+        platform. Every action you take is written into that entity's own activity log,
+        with your name on it.</div>
+      {% for category, message in flashes %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+</body></html>

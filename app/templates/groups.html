@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack">
+  <div class="note">A group is a package you share, and its policy is a <b>ceiling</b>. A grant can
+    be tighter than the group, never looser. Documents above the group's sensitivity ceiling are
+    excluded automatically, even when a rule would otherwise include them.</div>
+  <div class="card"><header><h2>{{ rows|length }} certificate groups</h2></header>
+    <table>
+      <thead><tr><th>Group</th><th>Ceiling</th><th class="num">Documents</th><th class="num">Live grants</th>
+        <th>Policy</th><th class="num">Max grant</th></tr></thead>
+      <tbody>
+      {% for row in rows %}
+        <tr>
+          <td><a href="/groups/{{ row.group.id }}">{{ row.group.name }}</a>
+            <div class="small muted mono">{{ row.group.code }}</div></td>
+          <td><span class="sens {{ row.group.sensitivity_ceiling }}">{{ row.group.sensitivity_ceiling }}</span></td>
+          <td class="num">{{ row.documents|length }}</td>
+          <td class="num">{{ row.grants }}</td>
+          <td class="small">
+            {% if row.group.nda_required %}<span class="chip info plain">NDA</span>{% endif %}
+            {% if row.group.watermark_required %}<span class="chip neutral plain">watermark</span>{% endif %}
+            {% if row.group.download_allowed %}<span class="chip neutral plain">download</span>
+            {% else %}<span class="chip warn plain">view only</span>{% endif %}</td>
+          <td class="num">{{ row.group.max_grant_days }}d</td>
+        </tr>
+      {% endfor %}
+      </tbody></table>
+  </div>
+</div>
+{% endblock %}

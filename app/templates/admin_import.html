@@ -1,0 +1,48 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<div class="card">
+  <div class="split">
+    <div>
+      <h2>Bulk profile import</h2>
+      <p class="muted">Creates <strong>unclaimed</strong> profiles that a company can
+      later find and claim. Import writes public-register fields only, creates no
+      documents and no assurance, and every batch runs as a dry run first.</p>
+    </div>
+  </div>
+  <form method="post" action="/admin/import/upload" enctype="multipart/form-data" class="stack">
+    <input type="file" name="file" accept=".csv,.tsv,.txt" required>
+    <button class="btn" type="submit">Upload and map columns</button>
+  </form>
+  <p class="small muted">Permitted: {% for f, (label, req) in permitted.items() %}{{ label }}{% if not loop.last %} · {% endif %}{% endfor %}.
+  Contact details, financial figures and risk ratings are rejected at validation.</p>
+</div>
+
+
+
+<div class="card">
+  <h3>Batches</h3>
+  <table class="table">
+    <thead><tr><th>File</th><th>Rows</th><th>Status</th><th class="num">Create</th>
+      <th class="num">Update</th><th class="num">Skip</th><th class="num">Reject</th>
+      <th class="num">Hold</th><th></th></tr></thead>
+    <tbody>
+    {% for b in batches %}
+      {% set c = batch_counts(b) %}
+      <tr>
+        <td>{{ b.filename or b.id[:8] }}<div class="small muted">{{ b.created_by }} · {{ b.created_at.strftime('%d %b %Y %H:%M') }}</div></td>
+        <td class="num">{{ b.row_count }}</td>
+        <td><span class="pill {{ 'good' if b.status == 'committed' else 'warn' if b.status == 'validated' else 'muted' }}">{{ b.status }}</span></td>
+        <td class="num">{{ c.get('create', 0) }}</td>
+        <td class="num">{{ c.get('update', 0) }}</td>
+        <td class="num">{{ c.get('skip', 0) }}</td>
+        <td class="num">{{ c.get('reject', 0) }}</td>
+        <td class="num">{{ c.get('hold', 0) }}</td>
+        <td><a href="/admin/import/{{ b.id }}">Open</a></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="9" class="table-empty">No imports yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

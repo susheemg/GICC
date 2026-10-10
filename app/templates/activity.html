@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack">
+  <div class="note">Everything that happens on this account, whoever does it — your team, your
+    buyers, agents holding your API keys, and the platform operator. Nothing is filtered out.</div>
+
+  <div class="grid c4">
+    {% for key, label, hint in [
+      ('team','Your team','signed in and made changes'),
+      ('buyer','Buyers','opened what you shared'),
+      ('agent','Agents','read over API or MCP'),
+      ('platform','Platform','operator actions on your account')] %}
+    <div class="kpi">
+      <div class="label">{{ label }}</div>
+      <div class="value {{ 'bad' if key == 'platform' and counts_by_actor[key] else '' }}">{{ counts_by_actor[key] }}</div>
+      <div class="foot">{{ hint }} · 30 days</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if counts_by_actor.platform %}
+  <div class="flash warn"><b>The platform operator has acted on this account
+    {{ counts_by_actor.platform }} time(s) in the last 30 days.</b>
+    Filter to <a href="/activity?actor=platform">Platform</a> to see exactly what and why.</div>
+  {% endif %}
+
+  <div class="card">
+    <header><h2>Where your buyers are looking</h2></header>
+    {% if recent_views %}
+    <table><thead><tr><th>When</th><th>Viewer</th><th>Action</th></tr></thead><tbody>
+      {% for view in recent_views %}
+      <tr><td class="nowrap small">{{ view.viewed_at.strftime('%d %b %H:%M') }}</td>
+        <td>{{ view.viewer_email or 'anonymous viewer' }}</td>
+        <td><span class="chip info plain">{{ view.action|replace('_',' ') }}</span></td></tr>
+      {% endfor %}
+    </tbody></table>
+    {% else %}<div class="table-empty">No client has opened a shared document yet.
+      <div class="small" style="margin-top:8px"><a href="/clients">Create a share link</a></div></div>{% endif %}
+  </div>
+
+  {% if receipts %}
+  <div class="card"><header><h2>Who read what</h2><span class="spacer"></span>
+    <span class="small muted">The question worth asking before you chase a buyer</span></header>
+    <table><thead><tr><th>When</th><th>Reader</th><th>Action</th><th>Document</th></tr></thead><tbody>
+      {% for receipt in receipts %}
+      <tr><td class="small nowrap">{{ receipt.at.strftime('%d %b %Y %H:%M') }}</td>
+        <td>{{ receipt.who }}</td>
+        <td><span class="chip ok plain">{{ receipt.action }}</span></td>
+        <td class="small">{{ receipt.what }}</td></tr>
+      {% endfor %}
+    </tbody></table>
+  </div>
+  {% endif %}
+
+  <div class="card"><div class="body">
+    <div class="split wrap" style="justify-content:space-between;gap:12px">
+      <div class="pill-filter">
+        <a href="/activity?days={{ days }}" class="{{ 'active' if not actor }}">Everyone</a>
+        <a href="/activity?actor=team&days={{ days }}" class="{{ 'active' if actor == 'team' }}">Your team</a>
+        <a href="/activity?actor=buyer&days={{ days }}" class="{{ 'active' if actor == 'buyer' }}">Buyers</a>
+        <a href="/activity?actor=agent&days={{ days }}" class="{{ 'active' if actor == 'agent' }}">Agents</a>
+        <a href="/activity?actor=platform&days={{ days }}" class="{{ 'active' if actor == 'platform' }}">Platform</a>
+        <a href="/activity?actor=system&days={{ days }}" class="{{ 'active' if actor == 'system' }}">Automatic</a>
+      </div>
+      <div class="pill-filter">
+        <a href="/activity?actor={{ actor }}&significance=high&days={{ days }}"
+           class="{{ 'active' if significance == 'high' }}">Significant only</a>
+        {% for window, label in [(7,'7 days'),(30,'30 days'),(90,'90 days'),(0,'All time')] %}
+        <a href="/activity?actor={{ actor }}&days={{ window }}" class="{{ 'active' if days == window }}">{{ label }}</a>
+        {% endfor %}
+      </div>
+    </div>
+    <form method="get" class="split" style="margin-top:12px">
+      <input type="hidden" name="actor" value="{{ actor }}">
+      <input type="hidden" name="days" value="{{ days }}">
+      <input name="q" value="{{ q }}" placeholder="Search by person, document or action">
+      <button class="btn secondary small" type="submit">Search</button>
+      {% if q %}<a class="btn small secondary" href="/activity">Clear</a>{% endif %}
+    </form>
+  </div></div>
+
+  <div class="card">
+    <header><h2>{{ rows|length }} entries</h2><span class="spacer"></span>
+      <a class="small" href="/audit">Forensic view with hash chain</a></header>
+    {% if rows %}
+    <table>
+      <thead><tr><th>When</th><th>Who</th><th>What happened</th><th></th></tr></thead>
+      <tbody>
+      {% for row in rows %}
+      <tr {% if row.significance == 'high' %}style="background:#FCFAF5"{% endif %}>
+        <td class="small nowrap">{{ row.event.occurred_at.strftime('%d %b %Y') }}
+          <div class="muted">{{ row.event.occurred_at.strftime('%H:%M:%S') }}</div></td>
+        <td class="nowrap">
+          <span class="chip {{ row.tone }} plain">{{ row.actor_label }}</span>
+          <div class="small muted">{{ row.who }}</div></td>
+        <td>{{ row.sentence }}
+          {% if row.event.ip %}<div class="small muted mono">from {{ row.event.ip }}</div>{% endif %}</td>
+        <td class="right small">
+          {% if row.significance == 'high' %}<span class="chip warn plain">significant</span>{% endif %}
+          {% if row.event.object_type == 'document' and row.event.object_id %}
+            <a href="/documents/{{ row.event.object_id }}">open</a>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody></table>
+    {% else %}
+    <div class="table-empty">Nothing matches that filter.
+      <div class="small" style="margin-top:8px"><a href="/activity">Clear the filters</a></div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="grid sidebar-right">
+  <div class="stack">
+    <div class="note">Answers are drafted <b>only</b> from evidence in this vault, and every one
+      cites the exact document version it came from. A question with no supporting evidence is
+      returned as a gap, never answered from general knowledge.</div>
+
+    <div class="card"><header><h2>{{ rows|length }} questionnaire{{ 's' if rows|length != 1 }}</h2>
+      <span class="spacer"></span>
+      <span class="small muted">{{ bank_size }} answer{{ 's' if bank_size != 1 }} banked for reuse</span></header>
+      {% if rows %}
+      <table><thead><tr><th>Name</th><th>Uploaded</th><th class="num">Questions</th>
+        <th class="num">Drafted</th><th class="num">Gaps</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+        {% for record in rows %}
+        <tr><td><a href="/questionnaires/{{ record.id }}">{{ record.name }}</a>
+            <div class="small muted mono">{{ record.source_filename or record.source_format }}</div></td>
+          <td class="small">{{ record.created_at.strftime('%d %b %Y') }}</td>
+          <td class="num">{{ record.item_count }}</td>
+          <td class="num">{{ record.answered_count }}</td>
+          <td class="num {{ 'bad' if record.gap_count }}">{{ record.gap_count }}</td>
+          <td>{{ status_chip(record.status) }}</td>
+          <td class="right"><a class="btn small secondary" href="/questionnaires/{{ record.id }}/export">Export</a></td></tr>
+        {% endfor %}
+      </tbody></table>
+      {% else %}<div class="table-empty">Nothing uploaded yet.</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card"><header><h3>Upload a questionnaire</h3></header><div class="body">
+      <form method="post" action="/questionnaires" enctype="multipart/form-data">
+        <div class="field"><label for="file">File <span class="hint">CSV, TSV, Markdown or plain text</span></label>
+          <input id="file" name="file" type="file" required accept=".csv,.tsv,.txt,.md"></div>
+        <div class="field"><label for="name">Name it</label>
+          <input id="name" name="name" placeholder="Meridian annual review 2026"></div>
+        <div class="field"><label for="client_id">For which client</label>
+          <select id="client_id" name="client_id"><option value="">Not specified</option>
+            {% for client in clients %}<option value="{{ client.id }}">{{ client.name }}</option>{% endfor %}
+          </select></div>
+        <button class="btn" type="submit">Upload and draft answers</button>
+      </form>
+      <p class="small muted" style="margin-top:12px">One question per line, or a CSV with a
+        column headed “Question”. A reference column is picked up automatically.</p>
+    </div></div>
+
+    <div class="card"><header><h3>Why the fifth one is fast</h3></header><div class="body">
+      <p class="small">Approving an answer banks it. The next questionnaire asking the same
+        thing arrives pre-filled, with its citation refreshed against whatever version is
+        current then. The bank is yours and travels with you in the account export.</p>
+      <dl class="dl small" style="margin-top:10px">
+        <dt>Engine</dt><dd>{{ 'Model — ' ~ ai_status.model if ai_status.enabled else 'Keyword mapping + templates' }}</dd>
+      </dl>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

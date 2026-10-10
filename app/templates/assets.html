@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div class="split wrap">
+    <div><div class="num" style="font-size:24px">{{ coverage.requiring }}</div>
+      <div class="small muted">instruments needing calibration</div></div>
+    <div><div class="num" style="font-size:24px">{{ coverage.percent }}%</div>
+      <div class="small muted">current</div></div>
+    <div><div class="num" style="font-size:24px;color:{{ '#B04848' if coverage.overdue else 'inherit' }}">{{ coverage.overdue }}</div>
+      <div class="small muted">overdue</div></div>
+    <div><div class="num" style="font-size:24px">{{ coverage.never }}</div>
+      <div class="small muted">never calibrated</div></div>
+    <div><div class="num" style="font-size:24px">{{ coverage.quarantined }}</div>
+      <div class="small muted">quarantined</div></div>
+  </div>
+  <p class="small muted">ISO 9001 clause 7.1.5 asks for measuring equipment calibrated
+  at defined intervals against traceable standards, with each item identifiable. The
+  gap an auditor looks for is an instrument in service without a current record —
+  which is why this page counts assets, not certificates.</p>
+</div>
+
+{% if assessments %}
+<div class="card">
+  <div class="callout bad">
+    <strong>{{ assessments|length }} open impact assessment(s).</strong>
+    An out-of-tolerance result means measurements taken since the previous calibration
+    may be invalid. Each of these blocks its instrument until closed.
+  </div>
+  <table class="table">
+    <thead><tr><th>Asset</th><th>Period under assessment</th><th>Opened</th><th></th></tr></thead>
+    <tbody>
+    {% for a in assessments %}
+      <tr>
+        <td class="mono small">{{ a.asset_id[:8] }}</td>
+        <td class="small">{{ a.period_from or 'unknown' }} → {{ a.period_to or 'unknown' }}</td>
+        <td class="small muted">{{ a.created_at.strftime('%d %b %Y') }}</td>
+        <td><a href="/assets/{{ a.asset_id }}">Open</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="card">
+  <h3>Asset register</h3>
+  <table class="table">
+    <thead><tr><th>Tag</th><th>Instrument</th><th>Serial</th><th>Interval</th>
+      <th>Last calibrated</th><th>Next due</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td class="mono small"><a href="/assets/{{ r.asset.id }}">{{ r.asset.asset_tag }}</a></td>
+        <td>{{ r.asset.name }}<div class="small muted">{{ r.asset.manufacturer or '' }} {{ r.asset.model or '' }}</div></td>
+        <td class="mono small">{{ r.asset.serial_number or '—' }}</td>
+        <td class="num small">{{ r.asset.calibration_interval_months ~ ' mo' if r.asset.calibration_interval_months else '—' }}</td>
+        <td class="small">{{ r.asset.last_calibrated_on.strftime('%d %b %Y') if r.asset.last_calibrated_on else 'never' }}</td>
+        <td class="small">
+          {% if r.asset.next_due_on %}{{ r.asset.next_due_on.strftime('%d %b %Y') }}
+            {% if r.days is not none and r.days < 0 %}<span class="pill bad">{{ -r.days }}d overdue</span>
+            {% elif r.days is not none and r.days <= 30 %}<span class="pill warn">{{ r.days }}d</span>{% endif %}
+          {% else %}—{% endif %}</td>
+        <td><span class="pill {{ 'bad' if r.asset.status == 'quarantined' else 'muted' if r.asset.status == 'retired' else 'good' }}">{{ r.asset.status.replace('_', ' ') }}</span></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="table-empty">No assets yet. Add the instruments whose
+        calibration your customers ask about.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if can_write %}
+<div class="card">
+  <h3>Add an instrument</h3>
+  <form method="post" action="/assets" class="stack">
+    <div class="split wrap">
+      <input type="text" name="asset_tag" placeholder="Asset tag (e.g. CMM-04)" required>
+      <input type="text" name="name" placeholder="Instrument name" required>
+      <input type="text" name="serial_number" placeholder="Serial number">
+    </div>
+    <div class="split wrap">
+      <input type="text" name="manufacturer" placeholder="Manufacturer">
+      <input type="text" name="model" placeholder="Model">
+      <input type="text" name="location" placeholder="Location">
+    </div>
+    <div class="split wrap">
+      <input type="text" name="calibration_interval_months" placeholder="Interval in months">
+      <select name="criticality">
+        {% for c in [1,2,3,4,5] %}<option value="{{ c }}" {{ 'selected' if c == 3 }}>Criticality {{ c }}</option>{% endfor %}
+      </select>
+    </div>
+    <input type="text" name="interval_basis" placeholder="Why this interval — manufacturer guidance, drift history, customer requirement">
+    <button class="btn" type="submit">Add to register</button>
+  </form>
+  <p class="small muted">The interval basis matters: an auditor asks how you chose it,
+  and "the last lab said twelve months" is a weaker answer than drift history.</p>
+</div>
+{% endif %}
+{% endblock %}

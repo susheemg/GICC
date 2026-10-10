@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack" style="max-width:640px">
+
+  <div style="text-align:center;padding:26px 0 6px">
+    <div style="font-size:30px;font-weight:600;color:var(--navy);letter-spacing:-.3px">
+      {% if state.complete %}You're set up{% else %}{{ state.done }} of {{ state.total }} done{% endif %}
+    </div>
+    <div class="muted" style="margin-top:6px;font-size:13px">
+      {% if state.complete %}
+        Everything a buyer needs to find and trust you is in place.
+      {% else %}
+        About {{ (state.total - state.done) * 2 }} minutes left.
+      {% endif %}
+    </div>
+    <div class="meter" style="max-width:280px;margin:18px auto 0">
+      <span style="width:{{ state.percent }}%"></span></div>
+  </div>
+
+  <div class="card"><div style="padding:4px 0">
+    {% for row in state.steps %}
+    <a href="{{ row.url }}" class="lifecycle-row {{ 'is-done' if row.done }}">
+      <span class="lifecycle-tick {{ 'done' if row.done else ('skip' if row.skipped else '') }}">
+        {% if row.done %}&#10003;{% elif row.skipped %}&ndash;{% else %}{{ row.number }}{% endif %}
+      </span>
+      <span style="flex:1">
+        <span class="lifecycle-title">{{ row.title }}</span>
+        <span class="lifecycle-why">{{ row.unlocks }}</span>
+      </span>
+      <span class="lifecycle-state">
+        {% if row.done %}Done{% elif row.skipped %}Skipped{% elif row.number == state.current %}Continue &rarr;{% else %}{% endif %}
+      </span>
+    </a>
+    {% endfor %}
+  </div></div>
+
+  <div style="text-align:center">
+    {% if state.complete %}
+      <a class="btn" href="/start/done">See what this unlocked</a>
+      <a class="btn secondary" href="/dashboard">Go to Start</a>
+    {% else %}
+      <a class="btn" href="/start/{{ state.current }}">Continue setup</a>
+      <form method="post" action="/start/dismiss" style="display:inline">
+        <button class="btn secondary" type="submit">Hide this guide</button></form>
+    {% endif %}
+  </div>
+
+  <p class="small muted" style="text-align:center">
+    Nothing here is mandatory. Skipping a step costs you what it unlocks, and
+    nothing else.</p>
+</div>
+{% endblock %}

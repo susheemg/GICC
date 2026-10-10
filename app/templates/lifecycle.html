@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack">
+  <div class="grid c4">
+    <div class="kpi"><div class="label">Lifecycle state</div>
+      <div class="value" style="font-size:20px">{{ tenant.lifecycle_state|replace('_',' ')|title }}</div>
+      <div class="foot">since {{ tenant.created_at|d }}</div></div>
+    <div class="kpi"><div class="label">Health</div>
+      <div class="value {{ tone }}">{{ health }}</div><div class="foot">{{ band }}</div></div>
+    <div class="kpi"><div class="label">Live grants</div>
+      <div class="value">{{ grants|length }}</div>
+      <div class="foot">across {{ clients|length }} client{{ 's' if clients|length != 1 }}</div></div>
+    <div class="kpi"><div class="label">Held</div>
+      <div class="value">{{ doc_count }}</div>
+      <div class="foot">{{ version_count }} versions · next expiry {{ next_expiry|d }}</div></div>
+  </div>
+
+  {% if signals %}
+  <div class="card"><header><h3>Why the health score is what it is</h3></header><div class="body">
+    {% for signal in signals %}<div class="note warn" style="margin-bottom:8px">{{ signal }}</div>{% endfor %}
+    <p class="small muted">Dormancy never silently revokes access. Uploads are restricted at 120
+      days of inactivity, but grants a buyer may be relying on stay live until an explicit exit.</p>
+  </div></div>
+  {% endif %}
+
+  <div class="grid c2">
+    <div class="card"><header><h2>Take your data with you</h2></header><div class="body">
+      <p class="small">A complete export in open JSON: every document and version with content
+        hashes, clients, grants, agreements and your full audit log. No fee, no notice period.</p>
+      <a class="btn secondary" href="/lifecycle/export">Download export</a>
+    </div></div>
+
+    <div class="card"><header><h2>Close this account</h2></header><div class="body">
+      {% if tenant.lifecycle_state == 'closing' %}
+        <div class="flash warn" style="margin-bottom:12px"><b>Closure in progress.</b>
+          Client access ends {{ grace_ends|d }}. Every grantee was notified and given a
+          download-enabled window, whatever the original grant allowed.</div>
+        <form method="post" action="/lifecycle/cancel-close" style="display:inline">
+          <button class="btn" type="submit">Cancel closure</button></form>
+        <form method="post" action="/lifecycle/purge" style="display:inline;margin-left:8px">
+          <input name="confirm" placeholder="Type PURGE" style="width:140px;display:inline-block">
+          <button class="btn danger" type="submit">Purge now</button></form>
+        <p class="small muted" style="margin-top:12px">Purge deletes documents, versions and files
+          and destroys the encryption key. The audit skeleton, billing records and your directory
+          identity survive — removing audit rows would break the hash chain and destroy its
+          evidential value. Documents under legal hold block the purge.</p>
+      {% else %}
+        <p class="small">Closing tells every client holding a grant that access ends in 30 days,
+          and enables download for that window even where the grant forbade it. Buyers may be
+          relying on this evidence for their own regulatory register.</p>
+        <form method="post" action="/lifecycle/close" style="margin-top:12px">
+          <div class="field"><label for="reason">Why are you leaving? <span class="hint">recorded, and read</span></label>
+            <input id="reason" name="reason" required placeholder="Moving to a buyer-side platform"></div>
+          <div class="field"><label for="confirm">Type CLOSE to confirm</label>
+            <input id="confirm" name="confirm" placeholder="CLOSE"></div>
+          <button class="btn danger" type="submit">Start closure</button>
+        </form>
+      {% endif %}
+    </div></div>
+  </div>
+
+  <div class="card"><header><h2>What happens on each exit path</h2></header>
+    <table><thead><tr><th>Path</th><th>Grantee notice</th><th>Download window</th><th>Data</th></tr></thead><tbody>
+      <tr><td>Voluntary closure</td><td>30 days</td><td>Enabled for 30 days</td><td>Export then purge</td></tr>
+      <tr><td>Dormancy, 180 days</td><td>30 days</td><td>Enabled for 30 days</td><td>Purge after grace</td></tr>
+      <tr><td>Non-payment</td><td>30 days</td><td>Enabled for 30 days</td><td>Purge after grace</td></tr>
+      <tr><td>Migration to a buyer platform</td><td>30 days</td><td>Enabled</td><td>Export plus API handover</td></tr>
+      <tr><td>Acquisition</td><td>Change-of-control notice</td><td>Unbroken</td><td>Tenant transfers, grants preserved</td></tr>
+      <tr><td>Entity dissolution</td><td>Immediate</td><td>Read only</td><td>Frozen, retained</td></tr>
+      <tr><td>Sanctions or regulatory suspension</td><td>Immediate</td><td>None</td><td>Retained</td></tr>
+      <tr><td>Fraud termination</td><td>Immediate, documents named</td><td>None</td><td>Legal hold</td></tr>
+      <tr><td>Erasure request</td><td>Only if shared data affected</td><td>—</td><td>Personal data only</td></tr>
+      <tr><td>Region exit</td><td>30 days</td><td>Enabled</td><td>Migrate then purge</td></tr>
+      <tr><td>Platform withdrawal from a market</td><td>180 days</td><td>Enabled</td><td>No purge before migration</td></tr>
+    </tbody></table>
+  </div>
+</div>
+{% endblock %}

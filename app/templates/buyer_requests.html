@@ -1,0 +1,27 @@
+{% extends "buyer_base.html" %}
+{% block content %}
+<div class="card">
+  <h2>Access requests</h2>
+  <p class="muted">Every request you have raised, and what the supplier decided.</p>
+  <table class="table">
+    <thead><tr><th>Supplier</th><th>Raised</th><th>Purpose</th><th>Status</th>
+      <th>Decided</th><th>Reason given</th></tr></thead>
+    <tbody>
+    {% for row in rows %}
+      <tr>
+        <td>{{ row.supplier }}</td>
+        <td class="small">{{ row.request.created_at.strftime('%d %b %Y') }}</td>
+        <td class="small muted">{{ row.request.purpose or '—' }}</td>
+        <td><span class="pill {{ 'good' if row.request.status == 'approved' else 'bad' if row.request.status == 'denied' else 'warn' }}">{{ row.request.status }}</span></td>
+        <td class="small">{{ row.request.decided_at.strftime('%d %b %Y') if row.request.decided_at else '—' }}</td>
+        <td class="small muted">{{ row.request.decision_note or '—' }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="table-empty">You have not requested anything yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="small muted">A denied request carries the supplier's reason. That is
+  deliberate: a refusal without a reason is indistinguishable from being ignored.</p>
+</div>
+{% endblock %}

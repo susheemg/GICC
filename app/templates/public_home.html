@@ -1,0 +1,135 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trusted Supplier Program</title>
+<link rel="stylesheet" href="/static/css/brata.css">
+<style>
+  .tsp-shell{min-height:100vh;display:flex;flex-direction:column;background:#fff}
+  .tsp-top{display:flex;align-items:center;gap:10px;padding:18px 26px}
+  .tsp-mid{flex:1;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;padding:0 20px 14vh;animation:rise .5s var(--ease) both}
+  .tsp-word{font-size:40px;font-weight:600;color:#1D1D1F;letter-spacing:-.03em}
+  .tsp-word .dot{width:13px;height:13px;background:#C8A227;display:inline-block;
+    margin-right:12px;border-radius:4px;vertical-align:2px}
+  .tsp-sub{color:#6E6E73;font-size:15px;margin:10px 0 36px}
+  .tsp-search{width:100%;max-width:620px}
+  .tsp-field{display:flex;align-items:center;border:1px solid rgba(60,60,67,.18);border-radius:999px;
+    padding:13px 22px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04);
+    transition:box-shadow .26s var(--ease),border-color .26s var(--ease),transform .26s var(--ease)}
+  .tsp-field:focus-within{box-shadow:0 6px 28px rgba(31,58,112,.14);border-color:rgba(62,111,176,.5);
+    transform:translateY(-1px)}
+  .tsp-field input{border:0 !important;outline:0;flex:1;font-size:16px;color:#1D1D1F;
+    background:transparent !important;box-shadow:none !important;padding:0 !important;margin:0;height:auto;min-height:0}
+  .tsp-field input::placeholder{color:#A1A1A6}
+  .tsp-actions{display:flex;gap:11px;justify-content:center;margin-top:24px}
+  .tsp-foot{padding:16px 26px;color:#A1A1A6;font-size:12px;display:flex;gap:18px;
+    border-top:1px solid rgba(60,60,67,.1)}
+  .tsp-scrim{position:fixed;inset:0;background:rgba(0,0,0,.18);-webkit-backdrop-filter:blur(4px);
+    backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .3s var(--ease);z-index:40}
+  .tsp-scrim.open{opacity:1;pointer-events:auto}
+  .tsp-panel{position:fixed;top:12px;right:12px;bottom:12px;width:400px;max-width:calc(100vw - 24px);
+    background:rgba(255,255,255,.78);-webkit-backdrop-filter:saturate(180%) blur(24px);
+    backdrop-filter:saturate(180%) blur(24px);border:1px solid rgba(255,255,255,.6);
+    border-radius:20px;z-index:41;visibility:hidden;opacity:0;
+    transform:translateX(28px) scale(.98);transition:transform .34s var(--ease-spring),opacity .26s var(--ease),visibility .34s;
+    overflow-y:auto;padding:30px 28px}
+  .tsp-panel.open{transform:none;opacity:1;visibility:visible;box-shadow:0 24px 80px rgba(0,0,0,.18)}
+  .tsp-panel h2{margin:0 0 4px;font-size:22px;color:#1D1D1F;letter-spacing:-.02em}
+  .tsp-close{position:absolute;top:14px;right:14px;width:30px;height:30px;border:0;border-radius:50%;
+    background:rgba(0,0,0,.06);font-size:18px;color:#6E6E73;cursor:pointer;line-height:1;
+    transition:background .16s}
+  .tsp-close:hover{background:rgba(0,0,0,.11)}
+  .tsp-option{display:block;text-decoration:none;padding:15px 17px;border:1px solid rgba(60,60,67,.12);
+    background:rgba(255,255,255,.7);border-radius:14px;margin-bottom:12px;
+    transition:transform .2s var(--ease),box-shadow .2s var(--ease),background .2s}
+  .tsp-option:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,0,0,.08);background:#fff;text-decoration:none}
+  .star{color:#C8A227}
+</style></head><body>
+<div class="tsp-shell">
+  <div class="tsp-top">
+    <span class="spacer" style="flex:1"></span>
+    <button class="btn secondary" onclick="openPanel('login')">Sign in</button>
+    <button class="btn" onclick="openPanel('register')">Register</button>
+  </div>
+
+  <div class="tsp-mid">
+    <div class="tsp-word"><span class="dot"></span>Trusted Supplier Program</div>
+    <div class="tsp-sub">Prove it once. Be accepted everywhere.</div>
+
+    <form class="tsp-search" method="get" action="/search">
+      <div class="tsp-field">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9AAAC2"
+             stroke-width="2" style="margin-right:11px;flex:none">
+          <circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+        <input name="q" placeholder="Supplier name" autofocus autocomplete="off"
+               aria-label="Supplier name">
+      </div>
+      <div class="tsp-actions">
+        <button class="btn" type="submit">Search suppliers</button>
+      </div>
+    </form>
+
+    <p class="small muted" style="margin-top:30px;text-align:center;max-width:460px">
+      <span class="star">★</span> marks a company registered with the Trusted Supplier
+      Program — their credentials are already verified and can be requested here.
+      Everyone else is shown from the public company register.
+    </p>
+  </div>
+
+  <div class="tsp-foot">
+    <span>{{ members }} registered supplier{{ '' if members == 1 else 's' }}</span>
+    <span>{{ '{:,}'.format(listed) }} companies listed</span>
+    <span class="spacer" style="flex:1"></span>
+    <a href="/claim" style="color:#8EA3C4">Claim your company</a>
+  </div>
+</div>
+
+<div class="tsp-scrim" id="scrim" onclick="closePanel()"></div>
+
+<div class="tsp-panel" id="panel-login">
+  <button class="tsp-close" onclick="closePanel()" aria-label="Close">&times;</button>
+  <h2>Sign in</h2>
+  <p class="muted small" style="margin-bottom:20px">Suppliers and buyers use the same door.</p>
+  {% for category, message in flashes %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}
+  <form method="post" action="/login">
+    <div class="field"><label for="li-email">Email</label>
+      <input id="li-email" name="email" type="email" required></div>
+    <div class="field"><label for="li-pw">Password</label>
+      <input id="li-pw" name="password" type="password" required></div>
+    <button class="btn" type="submit" style="width:100%">Sign in</button>
+  </form>
+  <p class="small muted" style="margin-top:16px">
+    No account? <a href="#" onclick="openPanel('register');return false">Register</a>.
+    Operator? <a href="/admin/login">Operator console</a>.</p>
+</div>
+
+<div class="tsp-panel" id="panel-register">
+  <button class="tsp-close" onclick="closePanel()" aria-label="Close">&times;</button>
+  <h2>Register</h2>
+  <p class="muted small" style="margin-bottom:20px">Which side are you on?</p>
+  <a class="tsp-option" href="/register">
+    <strong style="color:#1F3A70">I supply</strong>
+    <div class="small muted">Hold your certificates once, share them with every buyer
+      who asks, and stop refilling the same questionnaires.</div></a>
+  <a class="tsp-option" href="/register/buyer">
+    <strong style="color:#1F3A70">I buy</strong>
+    <div class="small muted">Search suppliers, request their records, and read evidence
+      that has already been verified.</div></a>
+  <a class="tsp-option" href="/claim">
+    <strong style="color:#1F3A70">My company is already listed</strong>
+    <div class="small muted">Claim the profile and it becomes your workspace.</div></a>
+</div>
+
+<script>
+  function openPanel(which){
+    closePanel();
+    document.getElementById('panel-' + which).classList.add('open');
+    document.getElementById('scrim').classList.add('open');
+  }
+  function closePanel(){
+    document.querySelectorAll('.tsp-panel').forEach(p => p.classList.remove('open'));
+    document.getElementById('scrim').classList.remove('open');
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
+  {% if panel %}openPanel('{{ panel }}');{% endif %}
+</script>
+</body></html>

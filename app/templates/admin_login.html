@@ -1,0 +1,34 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Platform console · Trusted Supplier Program</title><link rel="stylesheet" href="/static/css/brata.css"></head>
+<body><div class="auth-wrap">
+  <div class="auth-left" style="background:#3A1A1A">
+    <div>
+      <div style="font-size:17px;font-weight:600;display:flex;align-items:center;gap:8px">
+        <span style="width:9px;height:9px;background:#C2564E;display:inline-block"></span> Trusted Supplier Program</div>
+      <div style="font-size:11px;color:#D6A8A4;letter-spacing:.04em;text-transform:uppercase;margin-top:3px">
+        Platform console</div>
+      <p class="lede" style="margin-top:40px">Operator access is unrestricted. It is also
+        entirely visible to the entities you touch.</p>
+      <ul>
+        <li><b>1</b> Reading a workspace needs a break-glass session with a stated reason</li>
+        <li><b>2</b> Sessions expire on their own; nobody has to remember to close them</li>
+        <li><b>3</b> Every action lands in the entity's own activity log, named</li>
+        <li><b>4</b> Automated systems may restrict; only a named human may terminate</li>
+      </ul>
+    </div>
+    <div style="font-size:11.5px;color:#B08A86">Supplier sign-in is at <a href="/login" style="color:#D6A8A4">/login</a>.</div>
+  </div>
+  <div class="auth-right"><div class="auth-card">
+    <h1>Operator sign in</h1>
+    <p class="muted" style="margin-bottom:18px">This is not the supplier sign-in page.</p>
+    {% for category, message in flashes %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}
+    <form method="post" action="/admin/login">
+      <div class="field"><label for="email">Operator email</label>
+        <input id="email" name="email" type="email" required autofocus></div>
+      <div class="field"><label for="password">Password</label>
+        <input id="password" name="password" type="password" required></div>
+      <button class="btn" type="submit" style="width:100%;justify-content:center">Sign in</button>
+    </form>
+  </div></div>
+</div></body></html>

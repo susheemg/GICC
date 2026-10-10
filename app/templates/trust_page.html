@@ -1,0 +1,45 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ org.legal_name }} · public credentials</title><link rel="stylesheet" href="/static/css/brata.css"></head><body>
+{% macro ladder(level) %}
+  {% set n = {'L0':0,'L1':1,'L2':2,'L3':3,'L4':4}.get(level, 0) %}
+  <span class="assurance"><span class="ladder {{ level|lower }}">
+    {% for i in range(5) %}<i class="{{ 'on' if i <= n and n > 0 or (n==0 and i==0) else '' }}"></i>{% endfor %}
+  </span><span class="lvl">{{ level }}</span></span>
+{% endmacro %}
+<div class="share-head"><div class="inner">
+  <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8EA3C4">Public credential page</div>
+  <div style="font-size:24px;font-weight:600">{{ org.legal_name }}</div>
+  <div style="font-size:12.5px;color:#C7D2E4;margin-top:4px">
+    {{ org.country }}{% if org.registry_number %} · registry {{ org.registry_number }}{% endif %}
+    {%- if org.lei %} · LEI {{ org.lei }}{% endif %}</div>
+</div></div>
+<div class="share-body">
+  {% if exiting %}<div class="flash warn">This supplier has started closing its TSP account.
+    Contact them directly before relying on anything below.</div>{% endif %}
+  {% if org.description %}<div class="card"><div class="body"><p>{{ org.description }}</p>
+    <div class="small muted">{{ org.sector_code or '' }}{{ ' · ' ~ org.employees ~ ' employees' if org.employees }}
+      {%- if org.website %} · <a href="{{ org.website }}" rel="noopener nofollow">{{ org.website }}</a>{% endif %}</div>
+  </div></div>{% endif %}
+
+  <div class="card" style="margin-top:16px">
+    <header><h2>{{ rows|length }} publicly disclosed credential{{ 's' if rows|length != 1 }}</h2>
+      <span class="spacer"></span><span class="small muted">Anything more sensitive requires a grant</span></header>
+    {% if rows %}
+    <table><thead><tr><th>Code</th><th>Credential</th><th>Status</th><th>Assurance</th>
+      <th>Issuer</th><th class="num">Expires</th></tr></thead><tbody>
+      {% for row in rows %}
+      <tr><td class="mono small">{{ row.type.code }}</td>
+        <td>{{ row.document.title }}</td>
+        <td>{% set s = row.document.derived_status %}
+          <span class="chip {{ 'ok' if s == 'valid' else ('warn' if s == 'expiring_soon' else 'bad') }}">{{ s|replace('_',' ')|title }}</span></td>
+        <td>{{ ladder(row.version.assurance_level) }}</td>
+        <td class="small">{{ row.version.issuer_name or '—' }}</td>
+        <td class="num small nowrap">{{ row.version.expiry_date.strftime('%d %b %Y') if row.version.expiry_date else '—' }}</td></tr>
+      {% endfor %}
+    </tbody></table>
+    {% else %}<div class="table-empty">Nothing published publicly yet.</div>{% endif %}
+  </div>
+  <p class="small muted" style="margin-top:16px">Published through TSP. Assurance levels describe
+    how strongly each credential is evidenced, not the quality of the supplier.</p>
+</div></body></html>

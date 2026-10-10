@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block topbar_actions %}
+  <a class="btn secondary" href="/documents">Back to register</a>
+  <a class="btn" href="/documents/{{ document.id }}/versions/new">Add a version</a>
+{% endblock %}
+{% block content %}
+<div class="grid sidebar-right">
+  <div class="stack">
+    <div class="card"><header>
+      <h2>{{ document.title }}</h2><span class="spacer"></span>
+      {{ status_chip(document.derived_status) }}
+      {% if document.legal_hold %}<span class="chip bad">Legal hold</span>{% endif %}
+    </header>
+      <div class="body"><div class="timeline">
+        {% for version in versions %}
+        <div class="tl-item {{ 'current' if version.status == 'active' }}">
+          <div class="tl-head">
+            <b>Version {{ version.version_no }}</b>
+            {{ status_chip(version.status) }}
+            {{ ladder(version.assurance_level) }}
+            <span class="small muted">{{ assurance_name(version.assurance_level) }}</span>
+          </div>
+          <div class="small muted" style="margin:4px 0 8px">
+            Effective {{ version.effective_from|d }}
+            {%- if version.expiry_date %} · expires {{ version.expiry_date|d }}
+              ({{ version.expiry_date|days_until }} days){% endif %}
+            {%- if version.published_at %} · published {{ version.published_at.strftime('%d %b %Y %H:%M') }}{% endif %}
+          </div>
+          {% if version.change_reason %}<div class="small" style="margin-bottom:8px">
+            <span class="muted">Change:</span> {{ version.change_reason }}</div>{% endif %}
+          <dl class="dl small">
+            {% if version.certificate_number %}<dt>Certificate number</dt><dd class="mono">{{ version.certificate_number }}</dd>{% endif %}
+            {% if version.issuer_name %}<dt>Issuer</dt><dd>{{ version.issuer_name }}</dd>{% endif %}
+            {% if version.holder_name %}<dt>Named holder</dt><dd>{{ version.holder_name }}
+              {% if version.name_match == 'exact' %}<span class="chip ok plain small">matches entity</span>
+              {% elif version.name_match == 'mismatch' %}<span class="chip bad plain small">does not match entity</span>{% endif %}</dd>{% endif %}
+            {% if version.cover_amount %}<dt>Cover</dt><dd>{{ version.currency }} {{ version.cover_amount|money }}</dd>{% endif %}
+            {% if version.scope_statement %}<dt>Scope</dt><dd>{{ version.scope_statement }}</dd>{% endif %}
+            {% if certsearch_supported and version.status == 'active' %}
+            <dt>IAF CertSearch</dt>
+              <dd><form method="post" action="/versions/{{ version.id }}/certsearch" style="display:inline">
+                <button class="btn ghost small" type="submit">Confirm against IAF CertSearch</button></form></dd>
+            {% endif %}
+            {% if version.verification_url %}<dt>Authentication link</dt>
+              <dd><a href="{{ version.verification_url }}" rel="noopener nofollow" target="_blank">{{ version.verification_url|truncate(56) }}</a></dd>{% endif %}
+            {% if version.content_hash %}<dt>Content hash</dt><dd class="mono">{{ version.content_hash[:24] }}…</dd>{% endif %}
+          </dl>
+
+          {% if checks[version.id] %}
+          <div style="margin-top:10px;border-left:2px solid var(--border);padding-left:11px">
+            {% for check in checks[version.id] %}
+            <div class="small" style="margin-bottom:6px">
+              <span class="chip {{ 'ok' if check.result in ['match','link_ok'] else ('bad' if check.result in ['no_match','not_found','suspended','withdrawn','expired','link_dead'] else 'warn') }} plain">
+                {{ verification_result_labels.get(check.result, check.result) }}</span>
+              <span class="muted">{{ check.method|replace('_',' ') }} · {{ check.source_code }} ·
+                {{ check.checked_at.strftime('%d %b %H:%M') }} → {{ check.resulting_assurance }}</span>
+              {% if check.simulated %}<span class="chip warn plain" title="Not a live registry response">simulated connector</span>{% endif %}
+              {% if check.detail %}<div class="muted" style="margin-top:2px">{{ check.detail }}</div>{% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          {% if signals.get(version.id) %}
+          <div style="margin-top:10px;border-left:2px solid var(--warn);padding-left:11px">
+            <div class="small" style="font-weight:600;margin-bottom:4px">
+              Authenticity signals — observations, not findings</div>
+            {% for signal in signals[version.id] %}
+            <div class="small" style="margin-bottom:6px">
+              <span class="chip {{ 'bad' if signal.severity == 'high' else ('warn' if signal.severity == 'medium' else 'neutral') }} plain">{{ signal.severity }}</span>
+              {{ signal.detail }}
+              {% if signal.status == 'open' %}
+              <form method="post" action="/authenticity/{{ signal.id }}/resolve" class="split" style="margin-top:4px">
+                <input type="hidden" name="note" value="Reviewed by the document owner">
+                <button class="btn small secondary" type="submit" name="outcome" value="dismiss">Not a problem</button>
+                <button class="btn small danger" type="submit" name="outcome" value="confirm">Confirm the issue</button>
+              </form>
+              {% else %}
+              <span class="chip neutral plain">{{ signal.status }} by {{ signal.resolved_by }}</span>
+              {% endif %}
+            </div>
+            {% endfor %}
+            <p class="small muted">A signal never changes an assurance level in either
+              direction. Only a completed verification does that.</p>
+          </div>
+          {% endif %}
+
+          <div class="split wrap" style="margin-top:11px">
+            {% if version.file_path %}<a class="btn small secondary" href="/documents/{{ document.id }}/versions/{{ version.id }}/file">Download file</a>{% endif %}
+            {% if version.status in ['draft','scheduled'] %}
+              <form method="post" action="/documents/{{ document.id }}/versions/{{ version.id }}/publish" style="display:inline">
+                <button class="btn small" type="submit">Publish</button></form>{% endif %}
+            {% if version.status == 'active' %}
+              <form method="post" action="/documents/{{ document.id }}/versions/{{ version.id }}/authenticity" style="display:inline">
+                <button class="btn small secondary" type="submit">Check authenticity</button></form>
+              <form method="post" action="/documents/{{ document.id }}/versions/{{ version.id }}/verify" style="display:inline">
+                <button class="btn small secondary" type="submit">Run verification</button></form>
+              <form method="post" action="/documents/{{ document.id }}/versions/{{ version.id }}/confirm" style="display:inline">
+                <input type="hidden" name="notes" value="Reviewed against the source by the document owner">
+                <button class="btn small secondary" type="submit" title="A human review can reach L2, never L3">Confirm manually (L2)</button></form>
+              <form method="post" action="/documents/{{ document.id }}/versions/{{ version.id }}/withdraw" style="display:inline">
+                <input type="hidden" name="reason" value="Withdrawn by the document owner">
+                <button class="btn small danger" type="submit">Withdraw</button></form>{% endif %}
+            {% if version.status == 'superseded' %}
+              <form method="post" action="/documents/{{ document.id }}/versions/{{ version.id }}/rollback" style="display:inline">
+                <button class="btn small secondary" type="submit">Restore as new version</button></form>{% endif %}
+          </div>
+        </div>
+        {% else %}
+        <p class="muted">No versions yet. <a href="/documents/{{ document.id }}/versions/new">Add the first one</a>.</p>
+        {% endfor %}
+      </div></div>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card"><header><h3>{{ dtype.code }}</h3></header><div class="body">
+      <dl class="dl small">
+        <dt>Domain</dt><dd>{{ dtype.domain_name }}</dd>
+        <dt>Typical issuer</dt><dd>{{ dtype.typical_issuer }}</dd>
+        <dt>Validity</dt><dd>{{ dtype.validity_label }}</dd>
+        <dt>Verification route</dt><dd>{{ dtype.verification_route|replace('_',' ') }}</dd>
+        <dt>Sensitivity</dt><dd><span class="sens {{ dtype.sensitivity }}">{{ dtype.sensitivity }}</span> {{ sensitivity_name(dtype.sensitivity) }}</dd>
+        <dt>Criticality</dt><dd>{{ dtype.criticality }} of 5</dd>
+      </dl>
+    </div></div>
+
+    <div class="card"><header><h3>Who can see this</h3></header>
+      {% if groups %}
+      <table><tbody>
+        {% for group in groups %}
+        <tr><td><a href="/groups/{{ group.id }}">{{ group.name }}</a>
+          <div class="small muted">ceiling {{ group.sensitivity_ceiling }}{{ ' · NDA' if group.nda_required }}{{ ' · no download' if not group.download_allowed }}</div></td></tr>
+        {% endfor %}
+      </tbody></table>
+      {% else %}<div class="table-empty small">Not in any certificate group, so no client can reach it.</div>{% endif %}
+    </div>
+
+    <div class="card"><header><h3>Retention</h3></header><div class="body">
+      <p class="small muted">A legal hold blocks deletion of this document even during account
+        closure or an erasure request.</p>
+      <form method="post" action="/documents/{{ document.id }}/hold">
+        <button class="btn small {{ 'danger' if document.legal_hold else 'secondary' }}" type="submit">
+          {{ 'Release legal hold' if document.legal_hold else 'Place legal hold' }}</button>
+      </form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

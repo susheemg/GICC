@@ -1,0 +1,38 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<div class="stack">
+  <div class="card"><div class="body">
+    <form method="get" class="field-row c3" style="margin-bottom:0">
+      <div class="field" style="margin-bottom:0"><label for="tenant_id">Entity</label>
+        <select id="tenant_id" name="tenant_id" onchange="this.form.submit()">
+          <option value="">Every entity</option>
+          {% for id, name in tenants.items() %}<option value="{{ id }}" {{ 'selected' if tenant_id == id }}>{{ name }}</option>{% endfor %}
+        </select></div>
+      <div class="field" style="margin-bottom:0"><label for="actor_kind">Actor</label>
+        <select id="actor_kind" name="actor_kind" onchange="this.form.submit()">
+          <option value="">Anyone</option>
+          {% for value in ['user','client_contact','agent','api_client','platform_admin','system'] %}
+          <option value="{{ value }}" {{ 'selected' if actor_kind == value }}>{{ value|replace('_',' ')|title }}</option>{% endfor %}
+        </select></div>
+      <div class="field" style="margin-bottom:0"><label for="action">Action</label>
+        <select id="action" name="action" onchange="this.form.submit()">
+          <option value="">Every action</option>
+          {% for value in actions %}<option value="{{ value }}" {{ 'selected' if action == value }}>{{ value }}</option>{% endfor %}
+        </select></div>
+    </form>
+  </div></div>
+  <div class="card"><header><h2>{{ events|length }} events</h2></header>
+    <table><thead><tr><th>When</th><th>Entity</th><th>Action</th><th>Actor</th><th>Object</th></tr></thead>
+      <tbody>
+      {% for event in events %}
+      <tr><td class="small nowrap">{{ event.occurred_at.strftime('%d %b %Y %H:%M:%S') }}</td>
+        <td class="small">{{ tenants.get(event.tenant_id, '—') }}</td>
+        <td class="mono small">{{ event.action }}</td>
+        <td class="small">{{ event.actor_label or '—' }}
+          <div class="muted">{{ event.actor_kind }}</div></td>
+        <td class="small muted">{{ event.object_type or '—' }}</td></tr>
+      {% endfor %}
+    </tbody></table>
+  </div>
+</div>
+{% endblock %}

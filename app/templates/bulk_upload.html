@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>Upload up to {{ max_files }} documents at once</h2>
+  <p class="muted">Each file is read, matched against the catalogue and filed as a
+  <strong>draft</strong>. Nothing is published and no assurance is set until you
+  confirm each one — a confident guess is still a guess.</p>
+
+  {% if can_write %}
+  <form method="post" action="/documents/bulk" enctype="multipart/form-data" class="stack">
+    <input type="file" name="files" multiple required
+           accept=".pdf,.png,.jpg,.jpeg,.docx,.txt">
+    <button class="btn" type="submit">Upload and classify</button>
+  </form>
+  <p class="small muted">PDFs up to 25 MB. Password-protected files are rejected up
+  front, because their text cannot be read.</p>
+  {% else %}
+  <div class="callout warn">Your role cannot add documents.</div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3>Recent batches</h3>
+  <table class="table">
+    <thead><tr><th>Started</th><th class="num">Files</th><th class="num">Done</th>
+      <th class="num">Failed</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for j in recent %}
+      <tr>
+        <td class="small">{{ j.created_at.strftime('%d %b %Y %H:%M') }}<div class="muted">{{ j.created_by }}</div></td>
+        <td class="num">{{ j.total }}</td>
+        <td class="num">{{ j.done }}</td>
+        <td class="num">{{ j.failed or '' }}</td>
+        <td><span class="pill {{ 'good' if j.status == 'complete' else 'warn' if j.status == 'running' else 'muted' }}">{{ j.status }}</span></td>
+        <td><a href="/documents/bulk/{{ j.id }}">Open</a></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="table-empty">No batches yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

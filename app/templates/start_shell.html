@@ -1,0 +1,30 @@
+{% macro stepper(state, number) %}
+<div class="card" style="margin-bottom:16px"><div class="body">
+  <div class="split" style="justify-content:space-between;align-items:flex-start">
+    <div>
+      <div class="small muted">Step {{ number }} of {{ state.total }}</div>
+      <div style="font-size:15px;font-weight:600;color:var(--navy)">{{ state.done }} of {{ state.total }} done</div>
+    </div>
+    <form method="post" action="/start/dismiss">
+      <button class="btn small secondary" type="submit">Hide this guide</button></form>
+  </div>
+  <div class="meter" style="margin:10px 0 12px"><span style="width:{{ state.percent }}%"></span></div>
+  <div class="split wrap">
+    {% for row in state.steps %}
+      <a href="{{ row.url }}" class="chip {{ 'ok' if row.done else ('neutral' if row.skipped else ('info' if row.number == number else 'neutral')) }}"
+         style="text-decoration:none">
+        {{ row.number }}. {{ row.title }}{% if row.skipped %} (skipped){% endif %}</a>
+    {% endfor %}
+  </div>
+</div></div>
+{% endmacro %}
+
+{% macro why(meta) %}
+<div class="note" style="margin-bottom:16px"><b>Why this step:</b> {{ meta.why }}
+  <div class="small muted" style="margin-top:4px">Unlocks: {{ meta.unlocks }}</div></div>
+{% endmacro %}
+
+{% macro skip(number, label='Skip this step') %}
+<form method="post" action="/start/{{ number }}/skip" style="display:inline">
+  <button class="btn secondary" type="submit">{{ label }}</button></form>
+{% endmacro %}

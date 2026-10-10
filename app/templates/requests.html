@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack">
+  <div class="note">Requests are answered within two business days. The requester's identity and
+    stated purpose are recorded whether you approve or decline.</div>
+  <div class="card"><header><h2>Access requests</h2></header>
+    {% if rows %}
+    <table><thead><tr><th>Raised</th><th>Client</th><th>Scope</th><th>Purpose</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for row in rows %}
+      <tr><td class="small nowrap">{{ row.created_at.strftime('%d %b %H:%M') }}
+          <div class="muted">{{ row.contact_email or '—' }}</div></td>
+        <td>{{ clients[row.client_id].name if row.client_id in clients else '—' }}</td>
+        <td class="small">{{ groups[row.scope_id].name if row.scope_id in groups else row.scope_kind }}</td>
+        <td class="small">{{ row.purpose or '—' }}</td>
+        <td>{{ status_chip(row.status) }}
+          {% if row.decision_note %}<div class="small muted">{{ row.decision_note }}</div>{% endif %}</td>
+        <td class="right nowrap">
+          {% if row.status == 'open' %}
+          <form method="post" action="/requests/{{ row.id }}/decide" style="display:inline">
+            <input type="hidden" name="decision" value="approve">
+            <button class="btn small" type="submit">Approve</button></form>
+          <form method="post" action="/requests/{{ row.id }}/decide" style="display:inline">
+            <input type="hidden" name="decision" value="deny">
+            <input type="hidden" name="note" value="Not required for this engagement">
+            <button class="btn small danger" type="submit">Decline</button></form>
+          {% endif %}</td></tr>
+      {% endfor %}
+      </tbody></table>
+    {% else %}<div class="table-empty">No requests. Agents and clients can raise one through the
+      MCP <span class="mono">request_access</span> tool or a share link.</div>{% endif %}
+  </div>
+</div>
+{% endblock %}

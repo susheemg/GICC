@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block topbar_actions %}
+<a class="btn secondary" href="/questionnaires">All questionnaires</a>
+<a class="btn" href="/questionnaires/{{ record.id }}/export">Export CSV</a>
+{% endblock %}
+{% block content %}
+<div class="stack">
+  <div class="grid c4">
+    <div class="kpi"><div class="label">Questions</div><div class="value">{{ record.item_count }}</div>
+      <div class="foot">{{ client.name if client else 'no client set' }}</div></div>
+    <div class="kpi"><div class="label">Drafted from evidence</div>
+      <div class="value ok">{{ record.answered_count }}</div>
+      <div class="foot">each one cites a version</div></div>
+    <div class="kpi"><div class="label">Gaps</div>
+      <div class="value {{ 'bad' if record.gap_count }}">{{ record.gap_count }}</div>
+      <div class="foot">no evidence held</div></div>
+    <div class="kpi"><div class="label">Coverage</div>
+      <div class="value">{{ ((record.answered_count / record.item_count * 100) if record.item_count else 0)|round|int }}%</div>
+      <div class="meter" style="margin-top:8px"><span style="width:{{ (record.answered_count / record.item_count * 100) if record.item_count else 0 }}%"></span></div></div>
+  </div>
+
+  <div class="card"><header><h2>Answers</h2><span class="spacer"></span>
+    <span class="small muted">Edit, then approve to bank it for reuse</span></header>
+    <table>
+      <thead><tr><th style="width:34%">Question</th><th>Answer</th><th>Evidence</th><th></th></tr></thead>
+      <tbody>
+      {% for entry in items %}
+      <tr>
+        <td>
+          {% if entry.item.reference %}<div class="mono small muted">{{ entry.item.reference }}</div>{% endif %}
+          {{ entry.item.question }}
+          <div class="small muted" style="margin-top:4px">
+            {{ status_chip(entry.item.status) }}
+            {% if entry.item.confidence %}<span class="chip neutral plain">{{ (entry.item.confidence * 100)|round|int }}%</span>{% endif %}
+            <span class="chip neutral plain">{{ entry.item.source }}</span>
+          </div>
+        </td>
+        <td>
+          <form method="post" action="/questionnaires/{{ record.id }}/items/{{ entry.item.id }}">
+            <textarea name="answer" style="min-height:80px">{{ entry.item.answer or '' }}</textarea>
+            <div class="split" style="margin-top:6px">
+              <button class="btn small secondary" type="submit" name="action" value="save">Save</button>
+              <button class="btn small" type="submit" name="action" value="approve">Approve</button>
+            </div>
+          </form>
+        </td>
+        <td class="small">
+          {% if entry.citations %}
+            {% for citation in entry.citations %}
+            <div style="margin-bottom:5px">
+              <span class="mono">{{ citation.type_code }}</span> {{ citation.name }}
+              <div class="muted">assurance {{ citation.assurance }} · {{ citation.status|replace('_',' ') }}
+                · version {{ citation.version_id[:10] }}…</div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <span class="chip bad plain">no evidence held</span>
+            {% if entry.item.mapped_types %}
+            <div class="muted" style="margin-top:4px">Would be answered by
+              <span class="mono">{{ entry.item.mapped_types }}</span></div>
+            {% endif %}
+          {% endif %}
+        </td>
+        <td class="right">
+          {% if not entry.citations and entry.item.mapped_types %}
+          <form method="post" action="/documents/create">
+            <input type="hidden" name="type_code" value="{{ entry.item.mapped_types.split(',')[0] }}">
+            <button class="btn small secondary" type="submit">Add evidence</button></form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody></table>
+  </div>
+</div>
+{% endblock %}

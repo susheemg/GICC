@@ -1,0 +1,22 @@
+fastapi==0.141.1
+uvicorn[standard]==0.40.0
+sqlalchemy==2.0.51
+jinja2==3.1.6
+itsdangerous==2.2.0
+python-multipart==0.0.20
+httpx==0.28.1
+pypdf==5.9.0
+cryptography==46.0.6
+
+# Transitive, pinned deliberately. FastAPI pins starlette only as >=0.46.0, so
+# an unpinned build picks up whatever is newest on the day it runs - which is
+# how a build that succeeded produced a server that would not start.
+starlette==1.6.0
+pydantic==2.13.4
+
+# QR codes on certificates. OpenCV decodes them; Pillow is how pypdf hands over
+# the images embedded in a PDF. Without these the sync still reads printed
+# verification links from the text layer, and says so.
+opencv-python-headless==5.0.0.93
+numpy==2.5.3
+pillow==12.3.0

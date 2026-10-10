@@ -1,0 +1,41 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ tenant.name }} · confidentiality</title><link rel="stylesheet" href="/static/css/brata.css"></head><body>
+<div class="share-head"><div class="inner">
+  <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8EA3C4">Shared by</div>
+  <div style="font-size:21px;font-weight:600">{{ tenant.name }}</div>
+  <div style="font-size:12.5px;color:#C7D2E4;margin-top:3px">
+    Prepared for {{ client.name }}{{ ' · ' ~ group.name if group }}</div>
+</div></div>
+<div class="share-body" style="max-width:640px">
+  {% for category, message in flashes %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}
+  {% if tenant.lifecycle_state == 'closing' %}
+  <div class="flash warn"><b>{{ tenant.name }} is closing its account.</b> Download anything you
+    need for your own records — access ends shortly, and downloads have been enabled for this
+    window.</div>
+  {% endif %}
+  <div class="card">
+    <header><h2>{{ 'Before you open these documents' if nda_required else 'Tell us who you are' }}</h2></header>
+    <div class="body">
+    {% if nda_required %}
+      <p style="white-space:pre-line">{{ nda_text }}</p>
+      <p class="small muted mono">Terms reference {{ nda_hash }}</p>
+    {% else %}
+      <p>{{ tenant.name }} shares these documents with named people rather than anonymously.
+        Your email and the time of every document you open are recorded and shown to them.</p>
+    {% endif %}
+    <form method="post" action="/s/{{ token }}/accept" style="margin-top:16px">
+      <div class="field-row">
+        <div class="field"><label for="email">Your work email</label>
+          <input id="email" name="email" type="email" required></div>
+        <div class="field"><label for="full_name">Your name</label>
+          <input id="full_name" name="full_name"></div>
+      </div>
+      {% if nda_required %}
+      <div class="check"><input type="checkbox" id="accept" name="accept" required>
+        <label for="accept" style="margin:0">I accept these terms on behalf of {{ client.name }}</label></div>
+      {% endif %}
+      <button class="btn" type="submit">{{ 'Accept and continue' if nda_required else 'Continue' }}</button>
+    </form>
+  </div></div>
+</div></body></html>

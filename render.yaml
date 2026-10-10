@@ -1,0 +1,49 @@
+# Render blueprint. Commit this file, then in Render: New → Blueprint → pick the repo.
+services:
+  - type: web
+    name: gicc
+    runtime: python
+    plan: starter          # a paid plan is required for a persistent disk
+    region: frankfurt      # match your data-residency choice
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
+    autoDeploy: true
+    disk:
+      name: gicc-data
+      mountPath: /var/data   # SQLite file and uploaded documents live here
+      sizeGB: 5
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+      - key: SECRET_KEY
+        generateValue: true    # Render generates and stores this
+      - key: SEED_DEMO
+        value: "1"             # set to 0 for a clean production instance
+      - key: LIVE_LINK_CHECKS
+        value: "0"             # set to 1 to let verification fetch real URLs
+      - key: ADMIN_EMAIL
+        value: admin@gicc.platform
+      - key: ADMIN_PASSWORD
+        sync: false            # set this in the Render dashboard before deploying
+      - key: ANTHROPIC_API_KEY
+        sync: false            # optional — leave unset and the AI layer uses
+                               # deterministic fallbacks with no loss of function
+      - key: NOTIFY_TRANSPORT
+        value: "log"           # "smtp" with SMTP_URL for real email
+      - key: SWEEP_MINUTES
+        value: "60"
+      - key: PUBLIC_BASE_URL
+        sync: false            # https address of this service; OAuth redirects use it
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: MICROSOFT_CLIENT_ID
+        sync: false
+      - key: MICROSOFT_CLIENT_SECRET
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.12.3"        # also pinned in .python-version, which applies
+                               # even when the service was created by hand in
+                               # the dashboard rather than from this blueprint

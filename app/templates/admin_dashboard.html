@@ -1,0 +1,68 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<div class="stack">
+  {% if live_glass %}
+  <div class="flash bad"><b>{{ live_glass|length }} break-glass session(s) open.</b>
+    {% for session in live_glass %}
+      <div class="small" style="margin-top:4px">{{ tenant_names.get(session.tenant_id, session.tenant_id) }}
+        — {{ session.reason }} · expires {{ session.expires_at.strftime('%H:%M') }}</div>
+    {% endfor %}
+    <form method="post" action="/admin/break-glass/end" style="margin-top:8px">
+      <button class="btn small danger" type="submit">Close my session</button></form>
+  </div>
+  {% endif %}
+
+  <div class="grid c4">
+    <div class="kpi"><div class="label">Entities</div><div class="value">{{ counts.tenants }}</div>
+      <div class="foot">{{ counts.active }} active · {{ counts.suspended }} suspended</div></div>
+    <div class="kpi"><div class="label">Users</div><div class="value">{{ counts.users }}</div>
+      <div class="foot">across all entities</div></div>
+    <div class="kpi"><div class="label">Negative verifications</div>
+      <div class="value {{ 'bad' if negative else '' }}">{{ negative }}</div>
+      <div class="foot">{{ stale }} inconclusive — these never downgrade</div></div>
+    <div class="kpi"><div class="label">Agent calls, 7 days</div><div class="value">{{ agent_calls }}</div>
+      <div class="foot">{{ counts.open_holds }} documents under legal hold</div></div>
+  </div>
+
+  <div class="card"><header><h2>Assurance across the platform</h2><span class="spacer"></span>
+    <span class="small muted">Active versions only</span></header>
+    <div class="body"><div class="grid c4" style="gap:12px">
+      {% for level, label in [('L0','Self-declared'),('L1','Source-linked'),('L2','Human-verified'),('L3','Machine-verified'),('L4','Cryptographic')] %}
+      <div style="border:1px solid var(--border);padding:12px">
+        <div class="split">{{ ladder(level) }}</div>
+        <div style="font-size:22px;font-weight:600;color:var(--navy);margin-top:6px">{{ ladder[level] }}</div>
+        <div class="small muted">{{ label }}</div>
+      </div>
+      {% endfor %}
+    </div></div>
+  </div>
+
+  <div class="card"><header><h2>Entities</h2><span class="spacer"></span>
+    <a class="small" href="/admin/tenants">Manage</a></header>
+    <table><thead><tr><th>Entity</th><th>State</th><th class="num">Users</th>
+      <th class="num">Documents</th><th class="num">Grants</th><th class="num">Readiness</th>
+      <th>Created</th></tr></thead><tbody>
+      {% for row in rows %}
+      <tr><td><a href="/admin/tenants/{{ row.tenant.id }}">{{ row.tenant.name }}</a>
+          <div class="small muted mono">{{ row.tenant.slug }} · {{ row.tenant.data_region }}</div></td>
+        <td>{{ status_chip(row.tenant.lifecycle_state) }}</td>
+        <td class="num">{{ row.users }}</td><td class="num">{{ row.documents }}</td>
+        <td class="num">{{ row.grants }}</td>
+        <td class="num">{{ row.tenant.readiness_score }}%</td>
+        <td class="small">{{ row.tenant.created_at.strftime('%d %b %Y') }}</td></tr>
+      {% endfor %}
+    </tbody></table>
+  </div>
+
+  <div class="card"><header><h2>Most recent platform-wide events</h2></header>
+    <table><tbody>
+      {% for event in recent %}
+      <tr><td class="small nowrap">{{ event.occurred_at.strftime('%d %b %H:%M') }}</td>
+        <td class="small">{{ tenant_names.get(event.tenant_id, '—') }}</td>
+        <td class="mono small">{{ event.action }}</td>
+        <td class="small muted">{{ event.actor_label or event.actor_kind }}</td></tr>
+      {% endfor %}
+    </tbody></table>
+  </div>
+</div>
+{% endblock %}

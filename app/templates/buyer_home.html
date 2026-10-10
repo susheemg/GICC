@@ -1,0 +1,62 @@
+{% extends "buyer_base.html" %}
+{% block content %}
+<div class="card">
+  <div class="split wrap">
+    <div><div class="num" style="font-size:24px">{{ counts.total }}</div>
+      <div class="small muted">suppliers tracked</div></div>
+    <div><div class="num" style="font-size:24px">{{ counts.connected }}</div>
+      <div class="small muted">sharing records with you</div></div>
+    <div><div class="num" style="font-size:24px">{{ counts.requested }}</div>
+      <div class="small muted">awaiting a decision</div></div>
+    <div><div class="num" style="font-size:24px">{{ counts.invited }}</div>
+      <div class="small muted">not on TSP yet</div></div>
+  </div>
+  <p class="small muted">You ask once. The supplier decides what to share and for how
+  long, and can withdraw it. Nothing here is a credit score or a rating — it is the
+  supplier's own evidence, with the assurance level its evidence supports.</p>
+</div>
+
+{% if open_requests %}
+<div class="card">
+  <h3>Waiting on a supplier</h3>
+  <table class="table">
+    <thead><tr><th>Requested</th><th>Purpose</th><th>Due</th></tr></thead>
+    <tbody>
+    {% for r in open_requests %}
+      <tr>
+        <td class="small">{{ r.created_at.strftime('%d %b %Y') }}</td>
+        <td class="small muted">{{ r.purpose or '—' }}</td>
+        <td class="small">{{ r.sla_due_at.strftime('%d %b %Y') if r.sla_due_at else '—' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="split">
+    <h3>Your supply base</h3><div class="spacer"></div>
+    <a class="btn ghost" href="/buyer/search">Find a supplier</a>
+  </div>
+  <table class="table">
+    <thead><tr><th>Supplier</th><th>Country</th><th>Registry number</th>
+      <th>State</th><th class="num">Records</th></tr></thead>
+    <tbody>
+    {% for s in suppliers %}
+      <tr>
+        <td><a href="/buyer/suppliers/{{ s.link_id }}">{{ s.legal_name }}</a>
+          {% if s.internal_reference %}<div class="small muted mono">{{ s.internal_reference }}</div>{% endif %}</td>
+        <td class="mono small">{{ s.country }}</td>
+        <td class="mono small">{{ s.registry_number or '—' }}</td>
+        <td><span class="pill {{ 'good' if s.link_state == 'connected' else 'warn' if s.link_state == 'requested' else 'muted' }}">{{ s.link_state }}</span></td>
+        <td class="num">{{ s.documents or '' }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="table-empty">No suppliers yet.
+        <a href="/buyer/search">Search for one</a>.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

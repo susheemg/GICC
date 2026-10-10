@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack">
+  <div class="card"><header><h2>Setup complete</h2></header><div class="body">
+    <div class="grid c3">
+      {% for key, label, detail in [
+        ('m1','M1 — verified credential','a credential checked against its issuing source'),
+        ('m2','M2 — client grant','somebody outside relying on your profile'),
+        ('m3','M3 — buyer read','a buyer actually opening what you shared')] %}
+      <div style="border:1px solid var(--border);padding:14px">
+        <div class="split" style="justify-content:space-between">
+          <b>{{ label }}</b>
+          {% if state.milestones[key] %}<span class="chip ok">reached</span>
+          {% else %}<span class="chip neutral">not yet</span>{% endif %}
+        </div>
+        <p class="small muted" style="margin-top:6px">{{ detail }}</p>
+        {% if state.milestones[key] %}
+        <div class="small muted">{{ state.milestones[key].strftime('%d %b %Y %H:%M') }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <p style="margin-top:16px">Your workspace is set up. The three milestones above are how
+      we judge whether this product has actually been useful to you — not how many steps
+      you completed.</p>
+    <div class="split" style="margin-top:14px">
+      <a class="btn" href="/dashboard">Go to your dashboard</a>
+      <a class="btn secondary" href="/documents/upload">Add another credential</a>
+      <a class="btn secondary" href="/trust">See your Trust Index</a>
+    </div>
+  </div></div>
+
+  <div class="card"><header><h3>What to do next</h3></header>
+    <table><tbody>
+      <tr><td><b>Fill the gaps your buyers ask for</b>
+        <div class="small muted">The requirements page ranks what is missing by how many
+          buyers demand it</div></td>
+        <td class="right"><a class="btn small secondary" href="/requirements">Open</a></td></tr>
+      <tr><td><b>Answer a questionnaire from what you hold</b>
+        <div class="small muted">Upload one and we draft the answers with citations</div></td>
+        <td class="right"><a class="btn small secondary" href="/questionnaires">Open</a></td></tr>
+      <tr><td><b>Publish a public trust page</b>
+        <div class="small muted">Anything in a Public-ceiling group, visible without a login</div></td>
+        <td class="right"><a class="btn small secondary" href="/t/{{ tenant.slug }}">View</a></td></tr>
+    </tbody></table>
+  </div>
+</div>
+{% endblock %}

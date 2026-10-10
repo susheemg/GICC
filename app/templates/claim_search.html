@@ -1,0 +1,67 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Find your company · Trusted Supplier Program</title><link rel="stylesheet" href="/static/css/brata.css"></head><body>
+<div class="auth-wrap">
+  <div class="auth-left">
+    <div>
+      <div style="font-size:17px;font-weight:600;display:flex;align-items:center;gap:8px">
+        <span style="width:9px;height:9px;background:#3E6FB0;display:inline-block"></span> Trusted Supplier Program</div>
+      <div style="font-size:11px;color:#8EA3C4;letter-spacing:.04em;text-transform:uppercase;margin-top:3px">
+        Trusted Supplier Program</div>
+      <p class="lede" style="margin-top:40px">Your company may already have a profile here.</p>
+      <p style="color:#8EA3C4;font-size:12.5px;margin-top:18px">
+        Buyers sometimes list their suppliers before those suppliers have an account.
+        A profile like that holds public-register information only — no documents, no
+        assurance, nothing you have not published yourself.</p>
+      <p style="color:#8EA3C4;font-size:12.5px;margin-top:14px">
+        Claiming it proves the company is yours and turns it into a workspace you
+        control. We ask for a registration document because the claim decides who is
+        allowed to publish credentials in your company's name.</p>
+    </div>
+    <div style="font-size:11.5px;color:#6F84A8">
+      <a href="/register" style="color:#8EA3C4">No profile? Register from scratch</a></div>
+  </div>
+  <div class="auth-right"><div class="auth-card" style="max-width:520px">
+    <h1>Find your company</h1>
+    <p class="muted" style="margin-bottom:18px">Search by registered legal name.</p>
+    {% for category, message in flashes %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}
+    <form method="get" action="/claim">
+      <div class="field"><label for="q">Company name</label>
+        <input id="q" name="q" type="text" required autofocus value="{{ query }}"
+               placeholder="e.g. Northgate Data Systems"></div>
+      <div class="field"><label for="country">Country (optional)</label>
+        <input id="country" name="country" type="text" maxlength="2" value="{{ country }}"
+               placeholder="GB" style="text-transform:uppercase"></div>
+      <button class="btn" type="submit">Search</button>
+    </form>
+
+    {% if searched %}
+    <div style="margin-top:24px">
+      {% for r in results %}
+      <div class="card" style="margin-bottom:10px">
+        <div class="split">
+          <div>
+            <strong>{{ r.legal_name }}</strong>
+            <div class="small muted">{{ r.country }}
+              {% if r.registry_number %}· <span class="mono">{{ r.registry_number }}</span>{% endif %}
+              {% if r.locality %}· {{ r.locality }}{% endif %}
+              {% if r.incorporated_on %}· incorporated {{ r.incorporated_on.strftime('%Y') }}{% endif %}</div>
+          </div>
+          <div class="spacer"></div>
+          {% if r.claimable %}
+            <a class="btn" href="/claim/{{ r.id }}">This is us</a>
+          {% else %}
+            <span class="pill muted">{{ r.status.replace('_', ' ') }}</span>
+          {% endif %}
+        </div>
+      </div>
+      {% else %}
+      <p class="muted">Nothing matched that name. You can
+        <a href="/register">register a new workspace</a> instead — that is the normal
+        route, and nothing is lost by taking it.</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div></div>
+</div>
+</body></html>

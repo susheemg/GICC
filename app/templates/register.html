@@ -1,0 +1,43 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Register · Trusted Supplier Program</title><link rel="stylesheet" href="/static/css/brata.css"></head><body>
+<div class="auth-wrap">
+  <div class="auth-left">
+    <div>
+      <div style="font-size:17px;font-weight:600;display:flex;align-items:center;gap:8px">
+        <span style="width:9px;height:9px;background:#3E6FB0;display:inline-block"></span> Trusted Supplier Program</div>
+      <p class="lede" style="margin-top:40px">Registration takes a minute. Your first shared pack takes about thirty.</p>
+      <ul>
+        <li><b>1</b> Confirm your legal entity</li>
+        <li><b>2</b> Pick document types from a 182-type catalogue</li>
+        <li><b>3</b> Upload and record the issuer's authentication link</li>
+        <li><b>4</b> Grant a client a certificate group and share it</li>
+      </ul>
+    </div>
+    <div style="font-size:11.5px;color:#6F84A8">Fourteen certificate groups are seeded for you.</div>
+  </div>
+  <div class="auth-right"><div class="auth-card">
+    <h1>Register your company</h1>
+    {% for category, message in flashes %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}
+    <form method="post" action="/register">
+      <div class="field"><label for="legal_name">Registered legal name</label>
+        <input id="legal_name" name="legal_name" required placeholder="Northgate Data Systems Ltd"></div>
+      <div class="field-row">
+        <div class="field"><label for="country">Country of incorporation</label>
+          <select id="country" name="country">
+            {% for code, label in countries %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+          </select></div>
+        <div class="field"><label for="registry_number">Registry number <span class="hint">optional</span></label>
+          <input id="registry_number" name="registry_number" placeholder="09123456"></div>
+      </div>
+      <div class="field"><label for="full_name">Your name</label>
+        <input id="full_name" name="full_name" required></div>
+      <div class="field"><label for="email">Work email</label>
+        <input id="email" name="email" type="email" required></div>
+      <div class="field"><label for="password">Password <span class="hint">8 characters minimum</span></label>
+        <input id="password" name="password" type="password" required minlength="8"></div>
+      <button class="btn" type="submit" style="width:100%;justify-content:center">Create workspace</button>
+    </form>
+    <p class="small muted" style="margin-top:16px">Already registered? <a href="/login">Sign in</a>.</p>
+  </div></div>
+</div></body></html>

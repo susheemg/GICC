@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div class="split">
+    <div>
+      <h2>{{ asset.asset_tag }} — {{ asset.name }}</h2>
+      <div class="muted small">
+        {{ asset.manufacturer or '' }} {{ asset.model or '' }}
+        {% if asset.serial_number %}· serial <span class="mono">{{ asset.serial_number }}</span>{% endif %}
+        {% if asset.location %}· {{ asset.location }}{% endif %}
+        · criticality {{ asset.criticality }}</div>
+    </div>
+    <div class="spacer"></div>
+    <span class="pill {{ 'bad' if asset.status == 'quarantined' else 'muted' if asset.status == 'retired' else 'good' }}">{{ asset.status.replace('_', ' ') }}</span>
+  </div>
+  <div class="split wrap">
+    <div><div class="small muted">Interval</div>
+      <div>{{ asset.calibration_interval_months ~ ' months' if asset.calibration_interval_months else 'not set' }}</div></div>
+    <div><div class="small muted">Last calibrated</div>
+      <div>{{ asset.last_calibrated_on.strftime('%d %b %Y') if asset.last_calibrated_on else 'never' }}</div></div>
+    <div><div class="small muted">Next due</div>
+      <div>{{ asset.next_due_on.strftime('%d %b %Y') if asset.next_due_on else '—' }}</div></div>
+  </div>
+  {% if asset.interval_basis %}
+  <p class="small muted">Interval basis: {{ asset.interval_basis }}</p>{% endif %}
+</div>
+
+{% for a in assessments %}
+  {% if not a.closed_at %}
+  <div class="card">
+    <div class="callout bad">
+      <strong>Out-of-tolerance impact assessment open.</strong>
+      Measurements taken between {{ a.period_from or 'the previous calibration' }} and
+      {{ a.period_to or 'now' }} may be invalid. This instrument stays quarantined
+      until the assessment is closed.
+    </div>
+    {% if can_write %}
+    <form method="post" action="/assessments/{{ a.id }}/close" class="stack">
+      <select name="disposition" required>
+        <option value="">Select a disposition…</option>
+        <option value="no_impact">No impact — measurements remain valid</option>
+        <option value="rework">Rework required</option>
+        <option value="recall">Recall or customer notification required</option>
+        <option value="scrap">Affected product scrapped</option>
+      </select>
+      <textarea name="conclusion" rows="3" required
+        placeholder="What you checked, what you found, and why the disposition follows"></textarea>
+      <input type="text" name="products_affected" placeholder="Products, batches or jobs affected">
+      <label class="small"><input type="checkbox" name="customers_notified"> Affected customers have been notified</label>
+      <button class="btn" type="submit">Close the assessment</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+{% endfor %}
+
+<div class="card">
+  <h3>Calibration history</h3>
+  <table class="table">
+    <thead><tr><th>Date</th><th>Laboratory</th><th>Accreditation</th>
+      <th>As found</th><th>As left</th><th>Uncertainty</th><th>Assurance</th><th></th></tr></thead>
+    <tbody>
+    {% for e in records %}
+      <tr>
+        <td class="small">{{ e.record.calibration_date.strftime('%d %b %Y') if e.record.calibration_date else '—' }}
+          <div class="muted">due {{ e.record.next_due_on.strftime('%d %b %Y') if e.record.next_due_on else '—' }}</div></td>
+        <td class="small">{{ e.record.laboratory_name or '—' }}</td>
+        <td class="small">
+          {% if e.record.accreditation_body %}{{ e.record.accreditation_body }}
+            <div class="mono muted">{{ e.record.accreditation_number or '' }}</div>
+          {% else %}<span class="muted">not stated</span>{% endif %}</td>
+        <td><span class="pill {{ 'bad' if e.record.as_found == 'out_of_tolerance' else 'muted' }}">{{ e.record.as_found.replace('_', ' ') }}</span></td>
+        <td><span class="pill {{ 'good' if e.record.as_left == 'in_tolerance' else 'warn' }}">{{ e.record.as_left.replace('_', ' ') }}</span></td>
+        <td class="small">{{ e.record.measurement_uncertainty or '—' }}</td>
+        <td>
+          {% if e.version %}<span class="pill">{{ e.version.assurance_level }}</span>{% endif %}
+          {% if e.cap %}<div class="small muted">capped at {{ e.cap }}: no recognised accreditation</div>{% endif %}
+        </td>
+        <td>{% if e.version %}<a href="/documents/{{ e.version.document_id }}">Open</a>{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="8" class="table-empty">No calibration records for this instrument.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if can_write %}
+<div class="card">
+  <h3>Record a calibration</h3>
+  <form method="post" action="/assets/{{ asset.id }}/calibration"
+        enctype="multipart/form-data" class="stack">
+    <div class="split wrap">
+      <select name="type_code">
+        {% for t in calibration_types %}<option value="{{ t.code }}">{{ t.code }} — {{ t.name }}</option>{% endfor %}
+      </select>
+      <input type="date" name="calibration_date" required>
+      <input type="date" name="next_due_on" placeholder="Next due">
+    </div>
+    <div class="split wrap">
+      <input type="text" name="laboratory_name" placeholder="Calibration laboratory">
+      <input type="text" name="accreditation_body" placeholder="Accreditation body (UKAS, A2LA, DAkkS…)">
+      <input type="text" name="accreditation_number" placeholder="Accreditation number">
+    </div>
+    <div class="split wrap">
+      <select name="as_found">
+        <option value="not_applicable">As found — not applicable</option>
+        <option value="in_tolerance">As found — in tolerance</option>
+        <option value="out_of_tolerance">As found — OUT OF TOLERANCE</option>
+      </select>
+      <select name="as_left">
+        <option value="in_tolerance">As left — in tolerance</option>
+        <option value="adjusted_in_tolerance">As left — adjusted into tolerance</option>
+        <option value="out_of_tolerance">As left — out of tolerance</option>
+      </select>
+      <input type="text" name="measurement_uncertainty" placeholder="Uncertainty (e.g. ±0.002 mm, k=2)">
+    </div>
+    <textarea name="traceability_statement" rows="2"
+      placeholder="Traceability statement — the chain to SI through a national metrology institute"></textarea>
+    <input type="file" name="certificate" required accept=".pdf,.png,.jpg,.jpeg">
+    <button class="btn" type="submit">Record calibration</button>
+  </form>
+  <p class="small muted">An out-of-tolerance <em>as found</em> result opens a mandatory
+  impact assessment and quarantines the instrument — it is not simply a renewal.
+  Without a recognised accreditation body and number the record is capped at L1.</p>
+</div>
+{% endif %}
+{% endblock %}

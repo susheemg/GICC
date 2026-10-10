@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block topbar_actions %}<a class="btn secondary" href="/groups">All groups</a>{% endblock %}
+{% block content %}
+<div class="grid sidebar-right">
+  <div class="stack">
+    <div class="card"><header><h2>{{ documents|length }} documents in this group</h2></header>
+      {% if documents %}
+      <table><thead><tr><th>Code</th><th>Credential</th><th>Status</th><th>Assurance</th><th>Sens.</th></tr></thead>
+        <tbody>
+        {% for document in documents %}
+          <tr><td class="mono small">{{ document.document_type.code }}</td>
+            <td><a href="/documents/{{ document.id }}">{{ document.title }}</a></td>
+            <td>{{ status_chip(document.derived_status) }}</td>
+            <td class="small muted">{{ document.active_version_id and '—' or '—' }}</td>
+            <td><span class="sens {{ document.document_type.sensitivity }}">{{ document.document_type.sensitivity }}</span></td></tr>
+        {% endfor %}
+        </tbody></table>
+      {% else %}<div class="table-empty">Nothing resolves into this group yet.</div>{% endif %}
+    </div>
+
+    {% if excluded %}
+    <div class="card"><header><h3>Excluded by the sensitivity ceiling</h3></header>
+      <div class="body"><p class="small muted">These types match a rule in this group but sit above
+        its <b>{{ group.sensitivity_ceiling }}</b> ceiling, so they can never be disclosed through it.</p>
+        <div class="split wrap" style="margin-top:8px">
+          {% for dtype in excluded %}<span class="chip neutral plain">{{ dtype.code }} · {{ dtype.sensitivity }}</span>{% endfor %}
+        </div></div>
+    </div>
+    {% endif %}
+
+    <div class="card"><header><h3>Grants issued against this group</h3></header>
+      {% if grants %}
+      <table><thead><tr><th>Client</th><th>Permission</th><th>Expires</th><th>Status</th></tr></thead><tbody>
+        {% for grant in grants %}
+        <tr><td>{{ clients[grant.client_id].name if grant.client_id in clients else '—' }}</td>
+          <td class="small">{{ grant.permission_level|replace('_',' ') }}</td>
+          <td class="small">{{ grant.ends_at|d }}</td>
+          <td>{{ status_chip(grant.status) }}</td></tr>
+        {% endfor %}
+      </tbody></table>
+      {% else %}<div class="table-empty small">Not shared with anyone yet.</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="card"><header><h3>Disclosure policy</h3></header><div class="body">
+    <form method="post" action="/groups/{{ group.id }}/policy">
+      <div class="check"><input type="checkbox" id="nda_required" name="nda_required" {{ 'checked' if group.nda_required }}>
+        <label for="nda_required" style="margin:0">Require confidentiality acceptance</label></div>
+      <div class="check"><input type="checkbox" id="watermark_required" name="watermark_required" {{ 'checked' if group.watermark_required }}>
+        <label for="watermark_required" style="margin:0">Watermark every view</label></div>
+      <div class="check"><input type="checkbox" id="download_allowed" name="download_allowed" {{ 'checked' if group.download_allowed }}>
+        <label for="download_allowed" style="margin:0">Allow download</label></div>
+      <div class="field" style="margin-top:12px"><label for="max_grant_days">Longest grant, in days</label>
+        <input id="max_grant_days" name="max_grant_days" type="number" value="{{ group.max_grant_days }}" min="1" max="3650"></div>
+      <button class="btn" type="submit">Save policy</button>
+    </form>
+    <dl class="dl small" style="margin-top:16px">
+      <dt>Sensitivity ceiling</dt><dd><span class="sens {{ group.sensitivity_ceiling }}">{{ group.sensitivity_ceiling }}</span>
+        {{ sensitivity_name(group.sensitivity_ceiling) }}</dd>
+      <dt>Membership rules</dt><dd class="mono small">{% for item in items %}{{ item.type_prefix or 'explicit' }}{{ ', ' if not loop.last }}{% endfor %}</dd>
+    </dl>
+    <p class="small muted" style="margin-top:10px">Existing grants keep the terms they were issued
+      under. New grants use the updated ceiling.</p>
+  </div></div>
+</div>
+{% endblock %}

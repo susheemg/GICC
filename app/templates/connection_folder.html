@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card pad" style="max-width:640px">
+  <h2 style="margin-top:0">Which folder holds your compliance documents?</h2>
+  <p class="muted small">Connected to {{ label }} as {{ connection.account_email or 'your account' }}.
+    The platform will read this folder and everything inside it.</p>
+  {% if error %}<div class="callout bad">{{ error }}</div>{% endif %}
+  {% if parent %}<p class="small"><a href="/connections/{{ connection.id }}/folder">&larr; Top level</a></p>{% endif %}
+  <table><tbody>
+  {% for f in folders %}
+    <tr>
+      <td>&#128193; {{ f.name }}</td>
+      <td class="small"><a href="/connections/{{ connection.id }}/folder?parent={{ f.id }}">Open</a></td>
+      <td>
+        <form method="post" action="/connections/{{ connection.id }}/folder" class="split" style="gap:8px">
+          <input type="hidden" name="folder_id" value="{{ f.id }}">
+          <input type="hidden" name="folder_name" value="{{ f.name }}">
+          <select name="schedule">
+            <option value="daily" selected>Check daily</option>
+            <option value="hourly">Check hourly</option>
+            <option value="weekly">Check weekly</option>
+            <option value="manual">Manual only</option>
+          </select>
+          <button class="btn small" type="submit">Use this folder</button>
+        </form>
+      </td>
+    </tr>
+  {% else %}
+    <tr><td class="table-empty">No folders here.</td></tr>
+  {% endfor %}
+  </tbody></table>
+</div>
+{% endblock %}

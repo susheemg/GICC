@@ -1,0 +1,37 @@
+{% extends "buyer_base.html" %}
+{% block content %}
+<div class="card">
+  <div class="split">
+    <div>
+      <h2>{{ document.title }}</h2>
+      <div class="muted small"><span class="mono">{{ dtype.code }}</span> ·
+        {{ dtype.domain_name }} · shared by {{ supplier.name if supplier else 'the supplier' }}</div>
+    </div>
+    <div class="spacer"></div>
+    {% if active %}<span class="pill">{{ active.assurance_level }}</span>{% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <h3>Current version</h3>
+  {% if active %}
+  <table class="table"><tbody>
+    <tr><td class="muted small">Issuer</td><td>{{ active.issuer_name or '—' }}</td></tr>
+    <tr><td class="muted small">Holder</td><td>{{ active.holder_name or '—' }}</td></tr>
+    <tr><td class="muted small">Certificate number</td><td class="mono">{{ active.certificate_number or '—' }}</td></tr>
+    <tr><td class="muted small">Issued</td><td>{{ active.issue_date.strftime('%d %b %Y') if active.issue_date else '—' }}</td></tr>
+    <tr><td class="muted small">Expires</td><td>{{ active.expiry_date.strftime('%d %b %Y') if active.expiry_date else '—' }}</td></tr>
+    {% if active.scope_statement %}
+    <tr><td class="muted small">Scope</td><td>{{ active.scope_statement }}</td></tr>{% endif %}
+    {% if active.cover_amount %}
+    <tr><td class="muted small">Cover</td><td class="num">{{ '{:,.0f}'.format(active.cover_amount) }} {{ active.currency or '' }}</td></tr>{% endif %}
+    <tr><td class="muted small">Assurance</td>
+      <td><span class="pill">{{ active.assurance_level }}</span>
+        <div class="small muted">The level this credential's evidence supports.</div>
+        <div class="small muted">It is not a rating, and not something the supplier can set by hand.</div></td></tr>
+  </tbody></table>
+  {% else %}
+  <p class="table-empty">No published version.</p>
+  {% endif %}
+</div>
+{% endblock %}

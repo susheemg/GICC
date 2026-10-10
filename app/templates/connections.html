@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack" style="max-width:860px">
+
+  <div class="card pad">
+    <h2 style="margin-top:0">Keep your register in step with your drive</h2>
+    <p class="muted">Connect the folder where your certificates already live. Every
+    file is read, filed against the catalogue and checked against the authority it
+    points to. When a certificate is renewed in the folder, the new version arrives
+    here on its own.</p>
+    <div class="split wrap" style="gap:14px;margin-top:14px;align-items:flex-start">
+      {% for p in providers %}
+      <form method="post" action="/connections/{{ p.key }}/connect" style="flex:1;min-width:220px">
+        <button class="btn {{ '' if p.configured else 'secondary' }}" type="submit"
+                style="width:100%" {{ 'disabled' if not can_connect }}>
+          Connect {{ p.label }}</button>
+        {% if not p.configured %}
+        <div class="small muted" style="margin-top:6px">Not configured here yet —
+          needs <span class="mono">{{ p.env }}</span>.</div>
+        {% endif %}
+      </form>
+      {% endfor %}
+      <form method="post" action="/connections/demo/connect" style="flex:1;min-width:220px">
+        <button class="btn secondary" type="submit" style="width:100%"
+                {{ 'disabled' if not can_connect }}>Try the demo folder</button>
+        <div class="small muted" style="margin-top:6px">Six sample files, including
+          one with a suspicious QR code.</div>
+      </form>
+    </div>
+  </div>
+
+  {% if rows %}
+  <div class="card">
+    <header><h3>Connected folders</h3></header>
+    <table><thead><tr><th>Folder</th><th>Account</th><th class="num">Files</th>
+      <th>Checks</th><th>Last sync</th><th></th></tr></thead><tbody>
+    {% for r in rows %}
+      <tr>
+        <td><strong>{{ r.connection.folder_name or 'Folder not chosen' }}</strong>
+          <div class="small muted">{{ r.label }}</div></td>
+        <td class="small">{{ r.connection.account_email or '—' }}</td>
+        <td class="num">{{ r.files }}</td>
+        <td class="small">{{ r.connection.schedule }}</td>
+        <td class="small">
+          {% if r.connection.last_sync_at %}{{ r.connection.last_sync_at.strftime('%d %b %H:%M') }}
+            <span class="chip {{ 'ok' if r.connection.last_result == 'complete' else 'warn' }} plain">{{ r.connection.last_result }}</span>
+          {% elif r.connection.status == 'choose_folder' %}<a href="/connections/{{ r.connection.id }}/folder">Choose a folder</a>
+          {% else %}—{% endif %}
+          {% if r.connection.status == 'reauthorise' %}<div class="small" style="color:var(--bad)">Reconnect needed</div>{% endif %}
+        </td>
+        <td><a href="/connections/{{ r.connection.id }}">Open</a></td>
+      </tr>
+    {% endfor %}
+    </tbody></table>
+  </div>
+  {% endif %}
+
+  <div class="card pad">
+    <h3 style="margin-top:0">What the platform can and cannot do in your drive</h3>
+    <ul class="small" style="margin:0;padding-left:18px;line-height:1.7">
+      <li><strong>Read only.</strong> It never edits, moves, renames or deletes your files.</li>
+      <li><strong>One folder.</strong> It reads the folder you choose and its sub-folders.</li>
+      <li><strong>Nothing new publishes itself.</strong> A first-seen file lands as a draft. Once you
+        confirm it, later revisions of the same file publish as renewals.</li>
+      <li><strong>Deleting a file in your drive deletes nothing here.</strong> You get an action
+        instead, because a buyer may be relying on that credential.</li>
+      <li><strong>Disconnecting</strong> deletes the access tokens and keeps everything already filed.</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

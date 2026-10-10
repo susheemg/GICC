@@ -1,0 +1,45 @@
+{% extends "buyer_base.html" %}
+{% block content %}
+<div class="card">
+  <div class="split">
+    <div>
+      <h2>{{ entry.legal_name }}</h2>
+      <div class="muted small">Public-register identity</div>
+    </div>
+    <div class="spacer"></div>
+    {% if link %}
+      <a class="btn" href="/buyer/suppliers/{{ link.id }}">Open in your supply base</a>
+    {% else %}
+    <form method="post" action="/buyer/suppliers" class="stack">
+      <input type="hidden" name="organisation_id" value="{{ entry.id }}">
+      <input type="text" name="internal_reference" placeholder="Your reference">
+      <input type="text" name="category" placeholder="Category">
+      <select name="criticality">
+        {% for c in [1,2,3,4,5] %}<option value="{{ c }}" {{ 'selected' if c == 3 }}>Criticality {{ c }}</option>{% endfor %}
+      </select>
+      <button class="btn" type="submit">Add to my suppliers</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <h3>Identity</h3>
+  {% include "_buyer_fields.html" %}
+</div>
+
+<div class="card">
+  {% if entry.on_platform and entry.slug %}
+  <p class="small muted">This company publishes a public credential page at
+    <a href="/t/{{ entry.slug }}">/t/{{ entry.slug }}</a>. Anything beyond it has to be
+    requested, and they decide.</p>
+  {% elif not entry.claimed %}
+  <div class="callout warn">
+    <strong>Not on TSP yet.</strong> This entry was built from public-register data.
+    Nobody has claimed it, so there is no one to answer a request for records. Add
+    them anyway and send them the claim link — once they claim it, the profile you are
+    watching becomes theirs.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

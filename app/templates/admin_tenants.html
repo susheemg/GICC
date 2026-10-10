@@ -1,0 +1,45 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<div class="stack">
+  {% if duplicates %}
+  <div class="card"><header><h3>Duplicate legal entities</h3><span class="spacer"></span>
+    <span class="small muted">Two workspaces claiming the same registry number</span></header>
+    <table><tbody>
+      {% for country, number, count in duplicates %}
+      <tr><td class="mono small">{{ country }} {{ number }}</td>
+        <td class="right"><span class="chip warn plain">{{ count }} entities</span></td></tr>
+      {% endfor %}
+    </tbody></table>
+  </div>
+  {% endif %}
+
+  <div class="card"><div class="body">
+    <form method="get" class="field-row" style="margin-bottom:0">
+      <div class="field" style="margin-bottom:0"><label for="q">Search entities</label>
+        <input id="q" name="q" value="{{ q }}" placeholder="Company name"></div>
+      <div class="field" style="margin-bottom:0"><label for="state">Lifecycle state</label>
+        <select id="state" name="state" onchange="this.form.submit()">
+          <option value="">Every state</option>
+          {% for value in ['active','suspended','closing','closed'] %}
+          <option value="{{ value }}" {{ 'selected' if state == value }}>{{ value|title }}</option>
+          {% endfor %}
+        </select></div>
+    </form>
+  </div></div>
+
+  <div class="card"><header><h2>{{ rows|length }} entities</h2></header>
+    <table><thead><tr><th>Entity</th><th>Registry</th><th>State</th><th class="num">Users</th>
+      <th class="num">Documents</th><th class="num">Grants</th><th>Region</th></tr></thead><tbody>
+      {% for row in rows %}
+      <tr><td><a href="/admin/tenants/{{ row.tenant.id }}">{{ row.tenant.name }}</a>
+          <div class="small muted mono">{{ row.tenant.slug }}</div></td>
+        <td class="small mono">{{ row.org.country }} {{ row.org.registry_number or '—' }}</td>
+        <td>{{ status_chip(row.tenant.lifecycle_state) }}</td>
+        <td class="num">{{ row.users }}</td><td class="num">{{ row.documents }}</td>
+        <td class="num">{{ row.grants }}</td>
+        <td class="small mono">{{ row.tenant.data_region }}</td></tr>
+      {% endfor %}
+    </tbody></table>
+  </div>
+</div>
+{% endblock %}

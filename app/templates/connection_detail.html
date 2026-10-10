@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack">
+
+  <div class="card pad">
+    <div class="split" style="align-items:flex-start">
+      <div>
+        <div class="small" style="font-weight:600;color:var(--navy)">{{ label }}</div>
+        <div class="muted small">{{ connection.account_email or '—' }}
+          {% if connection.last_sync_at %}· last checked {{ connection.last_sync_at.strftime('%d %b %Y %H:%M') }} UTC{% endif %}
+          {% if connection.next_sync_at %}· next {{ connection.next_sync_at.strftime('%d %b %H:%M') }} UTC{% endif %}</div>
+      </div>
+      <div style="flex:1"></div>
+      {% if can_write and connection.status in ['active','reauthorise'] %}
+      <form method="post" action="/connections/{{ connection.id }}/sync">
+        <button class="btn" type="submit" {{ 'disabled' if running }}>
+          {{ 'Syncing…' if running else 'Sync now' }}</button></form>
+      {% endif %}
+    </div>
+
+    {% if connection.status == 'reauthorise' %}
+    <div class="callout bad" style="margin-top:12px">Access to this folder was revoked or has
+      expired. Reconnect it to resume; nothing already filed is affected.</div>
+    {% elif connection.error %}
+    <div class="callout warn" style="margin-top:12px">{{ connection.error }}</div>
+    {% endif %}
+    {% if running %}<div class="callout" style="margin-top:12px">A sync is running.
+      <a href="/connections/{{ connection.id }}">Refresh</a> to see progress.</div>{% endif %}
+  </div>
+
+  {% if last %}
+  <div class="card pad">
+    <header><h3>Last sync — {{ last.trigger }}, {{ last.started_at.strftime('%d %b %H:%M') }}</h3></header>
+    <div class="split wrap" style="gap:28px">
+      <div><div class="num" style="font-size:22px">{{ last.added }}</div><div class="small muted">new files</div></div>
+      <div><div class="num" style="font-size:22px">{{ last.updated }}</div><div class="small muted">updated</div></div>
+      <div><div class="num" style="font-size:22px">{{ last.unchanged }}</div><div class="small muted">unchanged</div></div>
+      <div><div class="num" style="font-size:22px">{{ last.removed }}</div><div class="small muted">removed at source</div></div>
+      <div><div class="num" style="font-size:22px">{{ last.published }}</div><div class="small muted">renewals published</div></div>
+      <div><div class="num" style="font-size:22px">{{ last.authority_links }}</div><div class="small muted">authority links found</div></div>
+      <div><div class="num" style="font-size:22px;color:{{ 'var(--bad)' if last.flagged else 'inherit' }}">{{ last.flagged }}</div><div class="small muted">flagged</div></div>
+      {% if summary.trust_before is defined %}
+      <div><div class="num" style="font-size:22px">{{ summary.trust_before }} &rarr; {{ summary.trust_after }}</div>
+        <div class="small muted">Trust Index</div></div>
+      {% endif %}
+    </div>
+    {% if drafts %}
+    <div class="callout warn" style="margin-top:14px"><strong>{{ drafts }} draft{{ '' if drafts == 1 else 's' }} waiting for you.</strong>
+      Confirm each once and later revisions of that file publish automatically.
+      <a href="/documents">Open My Documentation</a></div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <header><h3>Files in the folder</h3></header>
+    <table><thead><tr><th>File</th><th>Filed as</th><th>Checkable at</th>
+      <th>Register</th><th class="num">Revisions</th></tr></thead><tbody>
+    {% for f in files %}
+      <tr>
+        <td><a href="/connections/{{ connection.id }}/files/{{ f.file.id }}">{{ f.file.path or f.file.name }}</a>
+          {% if f.file.state == 'removed' %}<div class="small" style="color:var(--bad)">Removed from the folder — credential kept</div>{% endif %}
+          {% if f.file.last_error %}<div class="small" style="color:var(--bad)">{{ f.file.last_error }}</div>{% endif %}</td>
+        <td class="mono small">{{ f.type_code or ('not filed' if f.file.state == 'unclassified' else '—') }}</td>
+        <td class="small">
+          {% if f.lookalike %}<span class="chip bad plain">look-alike link</span>
+          {% elif f.authority %}{{ f.authority }}
+          {% else %}<span class="muted">—</span>{% endif %}</td>
+        <td>
+          {% if f.version %}
+            <a href="/documents/{{ f.version.document_id }}">v{{ f.version.version_no }}</a>
+            <span class="chip {{ 'ok' if f.version.status == 'active' else 'warn' }} plain">{{ f.version.status }}</span>
+          {% else %}<span class="muted small">—</span>{% endif %}
+        </td>
+        <td class="num">{{ f.revisions }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="table-empty">Nothing synced yet.</td></tr>
+    {% endfor %}
+    </tbody></table>
+  </div>
+
+  {% if connection.provider == 'demo' and can_write %}
+  <div class="card pad">
+    <header><h3>Change the demo folder</h3></header>
+    <p class="small muted">Do to the demo folder what a supplier does to a real one, then sync.</p>
+    <div class="split wrap" style="gap:10px">
+      <form method="post" action="/connections/{{ connection.id }}/demo/renew"><button class="btn secondary small">Renew the ISO 27001 certificate</button></form>
+      <form method="post" action="/connections/{{ connection.id }}/demo/add"><button class="btn secondary small">Add a modern slavery statement</button></form>
+      <form method="post" action="/connections/{{ connection.id }}/demo/rename"><button class="btn secondary small">Rename the Cyber Essentials file</button></form>
+      <form method="post" action="/connections/{{ connection.id }}/demo/remove"><button class="btn secondary small">Delete the liability certificate</button></form>
+      <form method="post" action="/connections/{{ connection.id }}/demo/overwrite"><button class="btn secondary small">Save a different document over the incorporation file</button></form>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="split wrap" style="gap:18px;align-items:flex-start">
+    {% if can_connect %}
+    <div class="card pad" style="flex:1;min-width:280px">
+      <header><h3>Schedule</h3></header>
+      <form method="post" action="/connections/{{ connection.id }}/settings" class="stack">
+        <select name="schedule">
+          {% for s in schedules %}<option value="{{ s }}" {{ 'selected' if s == connection.schedule }}>{{ 'Manual only' if s == 'manual' else 'Check ' ~ s }}</option>{% endfor %}
+        </select>
+        <label class="small"><input type="checkbox" name="auto_publish_renewals"
+          {{ 'checked' if connection.auto_publish_renewals }}> Publish renewals of files I have
+          already confirmed</label>
+        <button class="btn secondary" type="submit">Save</button>
+      </form>
+      <form method="post" action="/connections/{{ connection.id }}/disconnect" style="margin-top:14px"
+            onsubmit="return confirm('Disconnect this folder? Everything already filed is kept.')">
+        <button class="btn secondary small" type="submit">Disconnect</button></form>
+    </div>
+    {% endif %}
+
+    <div class="card" style="flex:2;min-width:320px">
+      <header><h3>Sync history</h3></header>
+      <table><thead><tr><th>When</th><th>Trigger</th><th class="num">New</th>
+        <th class="num">Updated</th><th class="num">Removed</th><th>Result</th></tr></thead><tbody>
+      {% for r in runs %}
+        <tr><td class="small nowrap">{{ r.started_at.strftime('%d %b %H:%M') }}</td>
+          <td class="small">{{ r.trigger }}</td>
+          <td class="num">{{ r.added }}</td><td class="num">{{ r.updated }}</td>
+          <td class="num">{{ r.removed }}</td>
+          <td><span class="chip {{ 'ok' if r.status == 'complete' else 'bad' if r.status == 'failed' else 'warn' }} plain">{{ r.status }}</span>
+            {% if r.error %}<div class="small muted">{{ r.error[:120] }}</div>{% endif %}</td></tr>
+      {% else %}<tr><td colspan="6" class="table-empty">No syncs yet.</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+  </div>
+</div>
+{% endblock %}

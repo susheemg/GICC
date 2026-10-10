@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block topbar_actions %}
+<form method="post" action="/notifications/read"><button class="btn secondary" type="submit">Mark all read</button></form>
+<form method="post" action="/notifications/sweep"><button class="btn" type="submit">Run sweep now</button></form>
+{% endblock %}
+{% block content %}
+<div class="grid sidebar-right">
+  <div class="stack">
+    <div class="card"><div class="body">
+      <div class="pill-filter">
+        <a href="/notifications" class="{{ 'active' if not unread and not kind }}">Everything</a>
+        <a href="/notifications?unread=1" class="{{ 'active' if unread }}">Unread</a>
+        {% for key, meta in kinds.items() %}
+        <a href="/notifications?kind={{ key }}" class="{{ 'active' if kind == key }}">{{ meta[2] }}</a>
+        {% endfor %}
+      </div>
+    </div></div>
+
+    <div class="card"><header><h2>{{ rows|length }} notification{{ 's' if rows|length != 1 }}</h2></header>
+      {% if rows %}
+      <table><thead><tr><th>When</th><th>What</th><th>Delivery</th><th></th></tr></thead><tbody>
+        {% for note in rows %}
+        <tr {% if not note.read_at %}style="background:var(--steel-soft)"{% endif %}>
+          <td class="small nowrap">{{ note.created_at.strftime('%d %b %Y') }}
+            <div class="muted">{{ note.created_at.strftime('%H:%M') }}</div></td>
+          <td>
+            <div class="split wrap">
+              <span class="chip {{ 'bad' if note.severity == 'high' else ('warn' if note.severity == 'warn' else 'info') }} plain">{{ note.severity }}</span>
+              <b>{{ note.title }}</b>
+            </div>
+            <div class="small muted" style="margin-top:3px">{{ note.body }}</div>
+          </td>
+          <td class="small">
+            {% if note.delivery_state == 'sent' %}<span class="chip ok plain">{{ note.delivery_channel }}</span>
+            {% elif note.delivery_state == 'failed' %}<span class="chip bad plain">failed</span>
+            {% else %}<span class="chip neutral plain">pending</span>{% endif %}</td>
+          <td class="right nowrap">
+            {% if note.action_url %}<a class="btn small secondary" href="{{ note.action_url }}">{{ note.action_label or 'Open' }}</a>{% endif %}
+            {% if not note.read_at %}
+            <form method="post" action="/notifications/read" style="display:inline">
+              <input type="hidden" name="notification_id" value="{{ note.id }}">
+              <button class="btn small secondary" type="submit">Read</button></form>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody></table>
+      {% else %}<div class="table-empty">Nothing here. The sweep runs hourly and on demand.</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="card"><header><h3>What you get told</h3></header>
+    <table><tbody>
+      {% for key, meta in kinds.items() %}
+      <tr><td class="small">{{ meta[2] }}
+          <div class="muted">{{ meta[1]|join(', ') }}</div></td>
+        <td class="right">
+          <form method="post" action="/notifications/preferences/{{ key }}" class="split">
+            <select name="channel" style="width:auto;font-size:12px">
+              {% set current = preferences.get(key).channel if preferences.get(key) else 'inbox' %}
+              <option value="inbox" {{ 'selected' if current == 'inbox' }}>Inbox</option>
+              <option value="email" {{ 'selected' if current == 'email' }}>Email</option>
+              <option value="off" {{ 'selected' if current == 'off' }}>Off</option>
+            </select>
+            <button class="btn small secondary" type="submit">Set</button>
+          </form></td></tr>
+      {% endfor %}
+    </tbody></table>
+    <div class="body"><p class="small muted">Every notification names one action. Reminders
+      fire at 90, 60, 30 and 7 days before expiry, then daily once expired.</p></div>
+  </div>
+</div>
+{% endblock %}

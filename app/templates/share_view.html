@@ -1,0 +1,59 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ tenant.name }} · shared credentials</title><link rel="stylesheet" href="/static/css/brata.css"></head><body>
+{% macro ladder(level) %}
+  {% set n = {'L0':0,'L1':1,'L2':2,'L3':3,'L4':4}.get(level, 0) %}
+  <span class="assurance"><span class="ladder {{ level|lower }}">
+    {% for i in range(5) %}<i class="{{ 'on' if i <= n and n > 0 or (n==0 and i==0) else '' }}"></i>{% endfor %}
+  </span><span class="lvl">{{ level }}</span></span>
+{% endmacro %}
+<div class="share-head"><div class="inner">
+  <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8EA3C4">Shared by</div>
+  <div style="font-size:21px;font-weight:600">{{ tenant.name }}</div>
+  <div style="font-size:12.5px;color:#C7D2E4;margin-top:3px">
+    Prepared for {{ client.name }}{{ ' · ' ~ group.name if group }}
+    {%- if grant.ends_at %} · access ends {{ grant.ends_at.strftime('%d %b %Y') }}{% endif %}</div>
+</div></div>
+<div class="share-body">
+  {% if tenant.lifecycle_state == 'closing' %}
+  <div class="flash warn"><b>{{ tenant.name }} is closing its account.</b> Download anything you
+    need to keep for your own records — access ends shortly, and downloads have been enabled for
+    this window.</div>
+  {% endif %}
+  {% if grant.watermark_required %}
+  <div class="watermark-bar">Every document you open is watermarked and logged.
+    {{ viewer.email if viewer else 'Your access' }} · {{ client.name }}</div>
+  {% endif %}
+
+  <div class="card" style="margin-top:16px">
+    <header><h2>{{ rows|length }} credential{{ 's' if rows|length != 1 }}</h2><span class="spacer"></span>
+      <span class="small muted">{{ 'Download permitted' if can_download else 'View only' }}</span></header>
+    <table><thead><tr><th>Code</th><th>Credential</th><th>Status</th><th>Assurance</th>
+      <th>Certificate no.</th><th class="num">Expires</th><th></th></tr></thead><tbody>
+      {% for row in rows %}
+      <tr><td class="mono small">{{ row.type.code }}</td>
+        <td><a href="/s/{{ token }}/d/{{ row.document.id }}">{{ row.document.title }}</a>
+          <div class="small muted">{{ row.type.domain_name }}</div></td>
+        <td>{% set s = row.document.derived_status %}
+          <span class="chip {{ 'ok' if s == 'valid' else ('warn' if s == 'expiring_soon' else 'bad') }}">
+            {{ s|replace('_',' ')|title }}</span></td>
+        <td>{{ ladder(row.version.assurance_level) }}</td>
+        <td class="mono small">{{ row.version.certificate_number or '—' }}</td>
+        <td class="num small nowrap">{{ row.version.expiry_date.strftime('%d %b %Y') if row.version.expiry_date else '—' }}</td>
+        <td class="right"><a class="btn small secondary" href="/s/{{ token }}/d/{{ row.document.id }}">Open</a></td></tr>
+      {% endfor %}
+    </tbody></table>
+  </div>
+
+  <div class="card" style="margin-top:16px"><div class="body">
+    <h3>Reading the assurance level</h3>
+    <table style="margin-top:8px"><tbody>
+      <tr><td>{{ ladder('L0') }}</td><td class="small">Uploaded by the supplier. Nothing has been checked.</td></tr>
+      <tr><td>{{ ladder('L1') }}</td><td class="small">A link to the issuing authority is recorded and resolves.</td></tr>
+      <tr><td>{{ ladder('L2') }}</td><td class="small">A reviewer compared it against the source and kept the evidence.</td></tr>
+      <tr><td>{{ ladder('L3') }}</td><td class="small">Matched automatically against an authoritative register.</td></tr>
+      <tr><td>{{ ladder('L4') }}</td><td class="small">A cryptographically verifiable credential or seal.</td></tr>
+    </tbody></table>
+    <p class="small muted" style="margin-top:10px">Treat L0 and L1 as claims, not verified facts.</p>
+  </div></div>
+</div></body></html>

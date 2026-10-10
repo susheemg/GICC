@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div class="split">
+    <div>
+      <h2>{{ dtype.name }}</h2>
+      <div class="muted small"><span class="mono">{{ dtype.code }}</span> ·
+        v{{ version.version_no }} · currently
+        <span class="pill">{{ version.assurance_level }}</span></div>
+    </div>
+    <div class="spacer"></div>
+    <a class="btn" href="{{ lookup.search_url }}" target="_blank" rel="noopener"
+       onclick="window.open(this.href,'iafcertsearch','width=1100,height=860'); return false;">
+      Open IAF CertSearch</a>
+  </div>
+  <p class="small muted">The search opens in a separate window, already filled in for
+  {{ lookup.query_name }}{% if lookup.query_standard %} and {{ lookup.query_standard }}{% endif %}.
+  Read the certificate there, then bring it back here — pasted or typed — and this
+  page will compare it field by field against what was uploaded.</p>
+</div>
+
+{% if lookup.error %}
+<div class="card"><div class="callout warn">
+  <strong>The automated route did not run.</strong> {{ lookup.error }}
+</div></div>
+{% endif %}
+
+<div class="card">
+  <div class="callout {{ 'warn' if ceiling != 'L3' else '' }}">
+    <strong>This route can reach {{ ceiling }}.</strong>
+    {% if ceiling == 'L3' %}
+    A licensed API response is attributable to IAF, so it counts as machine
+    verification.
+    {% else %}
+    A page read by a person — or scraped — is not an attributable response from IAF:
+    nobody there can confirm they sent it, and the markup can change without notice.
+    That supports {{ ceiling }}, a human verifying against the source. A licensed API
+    key is what raises this to L3.
+    {% endif %}
+  </div>
+</div>
+
+{% if previews %}
+{% for p in previews %}
+<div class="card">
+  <div class="split">
+    <h3>Candidate {{ loop.index }}
+      {% if p.candidate.certificate_number %}<span class="mono">{{ p.candidate.certificate_number }}</span>{% endif %}</h3>
+    <div class="spacer"></div>
+    <span class="pill {{ 'good' if p.comparison.verdict == 'match' else 'bad' if p.comparison.verdict == 'mismatch' else 'warn' }}">{{ p.comparison.verdict.replace('_', ' ') }}</span>
+  </div>
+
+  <table class="table">
+    <thead><tr><th>Field</th><th>On the uploaded certificate</th>
+      <th>On IAF CertSearch</th><th>Agrees</th></tr></thead>
+    <tbody>
+    {% for row in p.comparison.rows %}
+      <tr>
+        <td>{{ row.label }}{% if row.decisive %} <span class="pill muted">decisive</span>{% endif %}</td>
+        <td class="small">{{ row.held }}</td>
+        <td class="small">{{ row.found }}</td>
+        <td>
+          {% if row.verdict == 'match' %}<span class="pill good">yes</span>
+          {% elif row.verdict == 'mismatch' %}<span class="pill bad">no</span>
+          {% else %}<span class="pill muted">can't compare</span>{% endif %}
+          {% if row.detail %}<div class="small muted">{{ row.detail }}</div>{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  {% if p.comparison.verdict == 'mismatch' %}
+  <div class="callout bad">
+    <strong>IAF disagrees on {{ p.comparison.decisive_mismatches|join(', ') }}.</strong>
+    Applying this records a mismatch against the credential. That is a finding for the
+    supplier and their certification body to resolve — it is not something to re-run
+    until it passes.
+  </div>
+  {% endif %}
+
+  {% if can_write and lookup.status != 'applied' %}
+  <form method="post" action="/certsearch/{{ lookup.id }}/apply" class="stack">
+    <input type="hidden" name="candidate_index" value="{{ p.index }}">
+    <input type="text" name="note" placeholder="Note (optional)">
+    <label class="small"><input type="checkbox" name="attest" required>
+      I read this on the IAF CertSearch page just now.</label>
+    <button class="btn" type="submit">Apply this result</button>
+  </form>
+  {% endif %}
+</div>
+{% endfor %}
+{% endif %}
+
+{% if lookup.status != 'applied' and can_write %}
+<div class="card">
+  <h3>Bring the result back</h3>
+  <form method="post" action="/certsearch/{{ lookup.id }}/payload" class="stack">
+    <textarea name="payload" rows="5"
+      placeholder="Paste the certificate block from the IAF page, or a JSON response"></textarea>
+    <button class="btn ghost" type="submit">Read what I pasted</button>
+  </form>
+
+  <h3 style="margin-top:22px">Or type what you saw</h3>
+  <form method="post" action="/certsearch/{{ lookup.id }}/manual" class="stack">
+    <div class="split wrap">
+      <input type="text" name="certificate_number" placeholder="Certificate number">
+      <input type="text" name="standard" placeholder="Standard" value="{{ lookup.query_standard or '' }}">
+      <input type="text" name="status" placeholder="Status (active, withdrawn, suspended…)">
+    </div>
+    <div class="split wrap">
+      <input type="text" name="holder_name" placeholder="Certified organisation">
+      <input type="text" name="issue_date" placeholder="Valid from (YYYY-MM-DD)">
+      <input type="text" name="expiry_date" placeholder="Valid to (YYYY-MM-DD)">
+    </div>
+    <div class="split wrap">
+      <input type="text" name="certification_body" placeholder="Certification body">
+      <input type="text" name="accreditation_body" placeholder="Accreditation body">
+    </div>
+    <input type="text" name="scope_statement" placeholder="Scope">
+    <button class="btn ghost" type="submit">Compare these</button>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Not on IAF CertSearch</h3>
+  <form method="post" action="/certsearch/{{ lookup.id }}/not-found" class="stack">
+    <input type="text" name="note" placeholder="What you searched for">
+    <button class="btn ghost" type="submit">Record as not found</button>
+  </form>
+  <p class="small muted">Not every certification body publishes, and coverage varies by
+  scheme and region. This is recorded as inconclusive and leaves the existing assurance
+  level alone — a gap in IAF's coverage is not evidence against the supplier.</p>
+</div>
+{% endif %}
+
+{% if lookup.status == 'applied' %}
+<div class="card">
+  <div class="callout {{ 'good' if lookup.verdict == 'match' else 'bad' if lookup.verdict == 'mismatch' else 'warn' }}">
+    <strong>Applied {{ lookup.attested_at.strftime('%d %b %Y %H:%M') }} by {{ lookup.attested_by }}.</strong>
+    Verdict {{ lookup.verdict.replace('_', ' ') }};
+    assurance now {{ lookup.resulting_assurance }}.
+  </div>
+  <a class="btn ghost" href="/documents/{{ document.id }}">Back to the credential</a>
+</div>
+{% endif %}
+{% endblock %}

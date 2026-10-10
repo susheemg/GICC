@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div class="split">
+    <div>
+      <h2>Batch {{ job.id[:8] }}</h2>
+      <div class="muted small">{{ job.total }} file(s) ·
+        <span class="pill {{ 'good' if job.status == 'complete' else 'warn' }}">{{ job.status }}</span>
+        {% if job.ai_calls %}· {{ job.ai_calls }} model call(s){% endif %}</div>
+    </div>
+    <div class="spacer"></div>
+    {% if job.status == 'complete' and can_write %}
+    <form method="post" action="/documents/bulk/{{ job.id }}/discard"
+          onsubmit="return confirm('Remove every unconfirmed draft from this batch?')">
+      <button class="btn ghost">Discard the whole batch</button></form>
+    {% endif %}
+  </div>
+
+  {% if not progress.finished %}
+  <div id="bar" class="callout warn">
+    Processing {{ progress.done + progress.failed }} of {{ progress.total }}…
+    this page refreshes itself.</div>
+  <script>
+    setInterval(async () => {
+      const r = await fetch('/documents/bulk/{{ job.id }}/progress');
+      const p = await r.json();
+      document.getElementById('bar').textContent =
+        'Processing ' + (p.done + p.failed) + ' of ' + p.total + '…';
+      if (p.finished) location.reload();
+    }, 2000);
+  </script>
+  {% endif %}
+</div>
+
+{% if rejected %}
+<div class="card"><div class="callout warn">
+  <strong>{{ rejected|length }} file(s) were not processed</strong>
+  <ul>{% for r in rejected %}<li>{{ r }}</li>{% endfor %}</ul></div></div>
+{% endif %}
+
+{% if detail.duplicates %}
+<div class="card"><div class="callout warn">
+  <strong>{{ detail.duplicates|length }} duplicate(s) skipped</strong>
+  <ul>{% for d in detail.duplicates %}<li>{{ d.filename }} — {{ d.reason }}</li>{% endfor %}</ul>
+  <div class="small">Identical bytes, so re-filing them would create versions that say
+  nothing new.</div></div></div>
+{% endif %}
+
+{% if detail.result %}
+<div class="card">
+  <h3>Outcome</h3>
+  <div class="split wrap">
+    <div><div class="num" style="font-size:24px">{{ detail.result.filed }}</div><div class="small muted">filed with high confidence</div></div>
+    <div><div class="num" style="font-size:24px">{{ detail.result.needs_confirmation }}</div><div class="small muted">need your confirmation</div></div>
+    <div><div class="num" style="font-size:24px">{{ detail.result.proposed_type }}</div><div class="small muted">new type proposed</div></div>
+    <div><div class="num" style="font-size:24px">{{ detail.result.unclassified }}</div><div class="small muted">could not be classified</div></div>
+  </div>
+  <p class="small muted">Every one of these is a draft. Open each document to confirm
+  the type and the dates before it counts towards anything.</p>
+</div>
+{% endif %}
+
+<div class="card">
+  <h3>Files</h3>
+  <table class="table">
+    <thead><tr><th>File</th><th>Type</th><th>Confidence</th><th>Outcome</th><th></th></tr></thead>
+    <tbody>
+    {% for o in detail.outcomes %}
+      <tr>
+        <td class="small">{{ o.ref }}</td>
+        <td class="mono small">{{ o.get('type_code', '') }}</td>
+        <td class="num small">{% if o.get('confidence') is not none %}{{ (o.confidence * 100)|round|int }}%{% endif %}</td>
+        <td>
+          {% if o.status == 'failed' %}
+            <span class="pill bad">failed</span>
+            <div class="small muted">{{ o.error }}</div>
+          {% elif o.get('band') == 'filed' %}<span class="pill good">filed as draft</span>
+          {% elif o.get('band') == 'needs_confirmation' %}<span class="pill warn">confirm the type</span>
+          {% elif o.get('band') == 'proposed_type' %}<span class="pill warn">new type proposed</span>
+          {% elif o.get('band') == 'unclassified' %}<span class="pill muted">unclassified</span>
+            <div class="small muted">{{ o.get('reason', '') }}</div>
+          {% else %}<span class="pill muted">{{ o.status }}</span>{% endif %}
+          {% if o.get('note') %}<div class="small muted">{{ o.note }}</div>{% endif %}
+        </td>
+        <td>{% if o.get('document_id') %}<a href="/documents/{{ o.document_id }}">Open</a>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

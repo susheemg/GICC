@@ -1,0 +1,245 @@
+{% extends "admin_base.html" %}
+{% block topbar_actions %}
+<a class="btn secondary" href="/admin/analytics/export?period={{ period }}">Export JSON</a>
+{% endblock %}
+{% block content %}
+<div class="stack">
+  <div class="card"><div class="body">
+    <div class="split wrap" style="justify-content:space-between">
+      <div class="pill-filter">
+        {% for key, label in periods.items() %}
+        <a href="/admin/analytics?period={{ key }}" class="{{ 'active' if period == key }}">{{ label }}</a>
+        {% endfor %}
+      </div>
+      <span class="small muted">Computed live at {{ stats.generated_at.strftime('%d %b %Y %H:%M') }} — no cached aggregates</span>
+    </div>
+  </div></div>
+
+  <div class="grid c4">
+    <div class="kpi"><div class="label">Entities</div>
+      <div class="value">{{ stats.headline.tenants }}</div>
+      <div class="foot">{{ stats.headline.active }} active · {{ stats.headline.new_tenants }} new in period</div></div>
+    <div class="kpi"><div class="label">Activation, {{ stats.activation.window }} days</div>
+      {% set rate = stats.activation.windows[14].rate %}
+      <div class="value {{ 'ok' if rate >= stats.activation.target else ('warn' if rate >= stats.activation.median_benchmark else 'bad') }}">{{ rate }}%</div>
+      <div class="foot">target {{ stats.activation.target }}% · industry median {{ stats.activation.median_benchmark }}%</div></div>
+    <div class="kpi"><div class="label">Documents held</div>
+      <div class="value">{{ stats.headline.documents }}</div>
+      <div class="foot">{{ stats.estate.verified_share }}% machine-verified</div></div>
+    <div class="kpi"><div class="label">Open risk signals</div>
+      <div class="value {{ 'bad' if stats.risk.open_signals else '' }}">{{ stats.risk.open_signals }}</div>
+      <div class="foot">{{ stats.risk.suspended }} suspended · {{ stats.risk.holds }} under hold</div></div>
+  </div>
+
+  <div class="card"><header><h2>Onboarding funnel</h2><span class="spacer"></span>
+    <span class="small muted">{{ stats.funnel.registered }} registrations in period</span></header>
+    <div class="body">
+      {{ stats.funnel.chart|safe }}
+      {% if stats.funnel.worst %}
+      <div class="note warn" style="margin-top:12px"><b>Worst transition:</b>
+        {{ stats.funnel.worst[0] }} → {{ stats.funnel.worst[1] }} at
+        {{ '%.0f'|format(stats.funnel.worst[2]) }}%. This is where to spend the next
+        change.</div>
+      {% endif %}
+      <p class="small muted" style="margin-top:10px">Activation is <b>M2</b> — a live grant
+        to a real client. A supplier who completes five setup steps but shares nothing has
+        not activated, and counting them would be the mistake that kept the industry median
+        at 37% for four years.</p>
+    </div>
+  </div>
+
+  <div class="grid c2">
+    <div class="card"><header><h2>Activation windows</h2></header>
+      <table><thead><tr><th>Window</th><th class="num">Eligible</th><th class="num">Activated</th><th class="num">Rate</th><th>Against benchmark</th></tr></thead>
+        <tbody>
+        {% for window, row in stats.activation.windows.items() %}
+        <tr><td>{{ window }} days</td>
+          <td class="num">{{ row.eligible }}</td>
+          <td class="num">{{ row.activated }}</td>
+          <td class="num"><b>{{ row.rate }}%</b></td>
+          <td>{% if row.rate >= stats.activation.top_quartile %}<span class="chip ok plain">top quartile</span>
+            {% elif row.rate >= stats.activation.target %}<span class="chip ok plain">above target</span>
+            {% elif row.rate >= stats.activation.median_benchmark %}<span class="chip warn plain">around median</span>
+            {% else %}<span class="chip bad plain">below median</span>{% endif %}</td></tr>
+        {% endfor %}
+      </tbody></table>
+      <div class="body"><p class="small muted">Cohorts still inside their window are
+        excluded — counting them would flatter the number.</p></div>
+    </div>
+
+    <div class="card"><header><h2>Time to value</h2></header>
+      <table><thead><tr><th>Milestone</th><th class="num">Reached</th><th class="num">Median</th><th class="num">Fastest</th></tr></thead>
+        <tbody>
+        {% for key, label in [('m1','M1 verified credential'),('m2','M2 client grant'),('m3','M3 buyer read')] %}
+        <tr><td>{{ label }}</td>
+          <td class="num">{{ stats.activation.ttv[key].count }}</td>
+          <td class="num">{{ stats.activation.ttv[key].median }}{{ ' min' if stats.activation.ttv[key].median is not none }}</td>
+          <td class="num">{{ stats.activation.ttv[key].fastest }}{{ ' min' if stats.activation.ttv[key].fastest is not none }}</td></tr>
+        {% endfor %}
+      </tbody></table>
+      <div class="body">
+        {{ stats.activation.tier_chart|safe }}
+        <p class="small muted" style="margin-top:8px">Time to M1 against the published
+          tiers: under 5 minutes is excellent, over an hour means the journey needs help.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid c2">
+    <div class="card"><header><h2>Cohorts</h2><span class="spacer"></span>
+      <span class="small muted">Did a change actually work?</span></header>
+      <div class="body">{{ stats.cohorts.chart|safe }}</div>
+      <table><thead><tr><th>Cohort</th><th class="num">Registered</th><th class="num">Mature</th><th class="num">Activated</th><th class="num">Rate</th></tr></thead>
+        <tbody>
+        {% for row in stats.cohorts.table %}
+        <tr><td>{{ row.cohort }}</td><td class="num">{{ row.registered }}</td>
+          <td class="num">{{ row.mature }}</td><td class="num">{{ row.activated }}</td>
+          <td class="num">{{ row.rate }}%</td></tr>
+        {% endfor %}
+      </tbody></table>
+    </div>
+
+    <div class="card"><header><h2>Onboarding steps</h2><span class="spacer"></span>
+      <span class="small muted">{{ stats.steps.completed }} finished · {{ stats.steps.dismissed }} dismissed</span></header>
+      <table><thead><tr><th>Step</th><th class="num">Started</th><th class="num">Done</th>
+        <th class="num">Skipped</th><th class="num">Rate</th><th class="num">Median</th></tr></thead>
+        <tbody>
+        {% for row in stats.steps.steps %}
+        <tr><td>{{ row.number }}. {{ row.title }}</td>
+          <td class="num">{{ row.started }}</td><td class="num">{{ row.completed }}</td>
+          <td class="num {{ 'bad' if row.skip_rate > 50 }}">{{ row.skipped }}</td>
+          <td class="num">{{ row.rate }}%</td>
+          <td class="num">{{ row.median_minutes }}{{ ' min' if row.median_minutes is not none }}</td></tr>
+        {% endfor %}
+      </tbody></table>
+      <div class="body"><p class="small muted">A step most suppliers skip is a step that
+        should not exist. That is what the skip column is for.</p></div>
+    </div>
+  </div>
+
+  <div class="card"><header><h2>The estate</h2><span class="spacer"></span>
+    <span class="small muted">{{ stats.estate.documents }} documents platform-wide</span></header>
+    <div class="body">
+      <h3>Assurance across every active version</h3>
+      {{ stats.estate.ladder_chart|safe }}
+      <h3 style="margin-top:16px">Status mix</h3>
+      {{ stats.estate.status_chart|safe }}
+      <h3 style="margin-top:16px">Documents by risk domain</h3>
+      {{ stats.estate.domain_chart|safe }}
+    </div>
+    <table><thead><tr><th>Most-held document types</th><th class="num">Tenants holding</th></tr></thead>
+      <tbody>
+      {% for name, count in stats.estate.top_types %}
+      <tr><td class="small">{{ name }}</td><td class="num">{{ count }}</td></tr>
+      {% endfor %}
+    </tbody></table>
+  </div>
+
+  <div class="grid c2">
+    <div class="card"><header><h2>Verification health</h2></header>
+      <div class="grid c2" style="padding:16px 16px 0">
+        <div class="kpi"><div class="label">Checks in period</div>
+          <div class="value">{{ stats.verification.total }}</div>
+          <div class="foot">{{ stats.verification.simulated_share }}% from simulated connectors</div></div>
+        <div class="kpi"><div class="label">Negative results</div>
+          <div class="value {{ 'bad' if stats.verification.negative_share > 25 }}">{{ stats.verification.negative_share }}%</div>
+          <div class="foot">{{ stats.verification.inconclusive }} inconclusive · {{ stats.verification.stale }} stale</div></div>
+      </div>
+      <div class="body">{{ stats.verification.chart|safe }}
+        <p class="small muted">A rising inconclusive count is a failing connector, not a
+          failing supplier — and it never downgrades anyone's assurance.</p></div>
+    </div>
+
+    <div class="card"><header><h2>Disclosure</h2></header>
+      <div class="grid c2" style="padding:16px 16px 0">
+        <div class="kpi"><div class="label">Live grants</div>
+          <div class="value">{{ stats.disclosure.active }}</div>
+          <div class="foot">across {{ stats.disclosure.clients }} client accounts</div></div>
+        <div class="kpi"><div class="label">Never used</div>
+          <div class="value {{ 'warn' if stats.disclosure.unused_share > 30 }}">{{ stats.disclosure.unused_share }}%</div>
+          <div class="foot">{{ stats.disclosure.unused }} grants — that is over-disclosure</div></div>
+      </div>
+      <div class="body">{{ stats.disclosure.trend|safe }}
+        <p class="small muted">Buyer reads per day. {{ stats.disclosure.views }} in period ·
+          {{ stats.disclosure.requests_open }} access requests open.</p></div>
+    </div>
+  </div>
+
+  <div class="grid c2">
+    <div class="card"><header><h2>Trust Index distribution</h2></header>
+      <div class="body">{{ stats.trust.chart|safe }}
+        <p class="small muted" style="margin-top:8px">Mean composite {{ stats.trust.mean }}
+          · {{ stats.trust.withheld }} withheld while under review.</p>
+        <h3 style="margin-top:14px">Mean score by domain</h3>
+        {{ stats.trust.domain_chart|safe }}
+      </div>
+    </div>
+
+    <div class="card"><header><h2>AI layer</h2></header>
+      <div class="grid c2" style="padding:16px 16px 0">
+        <div class="kpi"><div class="label">Inferences</div>
+          <div class="value">{{ stats.ai.total }}</div>
+          <div class="foot">{{ stats.ai.model_share }}% from a model, rest from rules</div></div>
+        <div class="kpi"><div class="label">Error rate</div>
+          <div class="value {{ 'bad' if stats.ai.error_rate > 10 }}">{{ stats.ai.error_rate }}%</div>
+          <div class="foot">median {{ stats.ai.median_latency }} ms · each failure fell back</div></div>
+      </div>
+      <div class="body">{{ stats.ai.chart|safe }}</div>
+      {% if stats.ai.providers %}
+      <table><thead><tr><th>Provider</th><th>Model</th><th class="num">Calls</th><th class="num">Tokens</th><th></th></tr></thead>
+        <tbody>
+        {% for p in stats.ai.providers %}
+        <tr><td>{{ p.label }}</td><td class="small mono">{{ p.model }}</td>
+          <td class="num">{{ p.calls }}</td><td class="num">{{ '{:,}'.format(p.tokens) }}</td>
+          <td>{% if p.enabled %}<span class="chip ok plain">active</span>
+            {% elif p.tested_ok %}<span class="chip neutral plain">tested</span>
+            {% else %}<span class="chip bad plain">untested</span>{% endif %}</td></tr>
+        {% endfor %}
+      </tbody></table>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid c2">
+    <div class="card"><header><h2>Risk and enforcement</h2><span class="spacer"></span>
+      <a class="small" href="/admin/analytics/tenants?metric=signals">See the tenants</a></header>
+      <div class="body">
+        <div class="split wrap" style="margin-bottom:10px">
+          {% for severity, count in stats.risk.by_severity.items() %}
+          <span class="chip {{ 'bad' if severity == 'high' else ('warn' if severity == 'medium' else 'neutral') }}">{{ count }} {{ severity }}</span>
+          {% endfor %}
+        </div>
+        {{ stats.risk.chart|safe }}
+        <p class="small muted" style="margin-top:8px">{{ stats.risk.suspended }} suspended ·
+          {{ stats.risk.closing }} closing · {{ stats.risk.holds }} documents under legal
+          hold · {{ stats.risk.break_glass }} break-glass sessions in period.</p>
+      </div>
+    </div>
+
+    <div class="card"><header><h2>Tenant health</h2><span class="spacer"></span>
+      <a class="small" href="/admin/analytics/tenants?metric=at_risk">Work queue</a></header>
+      <div class="body">{{ stats.health.chart|safe }}
+        <p class="small muted" style="margin-top:8px">Mean health {{ stats.health.mean }}.</p></div>
+      <table><thead><tr><th>Entity</th><th class="num">Score</th><th>Why</th></tr></thead>
+        <tbody>
+        {% for row in stats.health.at_risk %}
+        <tr><td><a href="/admin/tenants/{{ row.tenant.id }}">{{ row.tenant.name }}</a></td>
+          <td class="num"><span class="chip {{ row.tone }} plain">{{ row.score|round|int }}</span></td>
+          <td class="small muted">{{ row.signals[0] if row.signals else '—' }}</td></tr>
+        {% else %}<tr><td colspan="3" class="table-empty small">Every tenant is healthy.</td></tr>
+        {% endfor %}
+      </tbody></table>
+    </div>
+  </div>
+
+  <div class="card"><div class="body">
+    <div class="split wrap">
+      <a class="btn small secondary" href="/admin/analytics/tenants?metric=not_activated">Registered but never shared</a>
+      <a class="btn small secondary" href="/admin/analytics/tenants?metric=at_risk">At-risk tenants</a>
+      <a class="btn small secondary" href="/admin/analytics/tenants?metric=signals">Open signals</a>
+    </div>
+    <p class="small muted" style="margin-top:10px">Every aggregate above traces back to the
+      tenants behind it. Statistics that cannot be drilled into are decoration.</p>
+  </div></div>
+</div>
+{% endblock %}

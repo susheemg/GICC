@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ page_title|default('Dashboard') }}{% endblock %} · Trusted Supplier Program</title>
+<link rel="stylesheet" href="/static/css/brata.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%231F3A70'/><rect x='7' y='9' width='18' height='4' fill='%233E6FB0'/><rect x='7' y='16' width='12' height='4' fill='%23fff'/></svg>">
+</head>
+<body>
+{% macro ladder(level, size='') %}
+  {% set n = {'L0':0,'L1':1,'L2':2,'L3':3,'L4':4}.get(level, 0) %}
+  <span class="assurance" title="Assurance {{ level }} — {{ assurance_name(level) }}">
+    <span class="ladder {{ level|lower }} {{ size }}">
+      {% for i in range(5) %}<i class="{{ 'on' if i <= n and n > 0 or (n==0 and i==0) else '' }}"></i>{% endfor %}
+    </span>
+    <span class="lvl">{{ level }}</span>
+  </span>
+{% endmacro %}
+
+{% macro status_chip(status) %}
+  {% set map = {
+    'valid': ('ok','Valid'), 'expiring_soon': ('warn','Expiring soon'),
+    'expired': ('bad','Expired'), 'suspended': ('bad','Suspended'),
+    'withdrawn': ('neutral','Withdrawn'), 'missing': ('neutral','No version'),
+    'in_review': ('info','In review'), 'active': ('ok','Active'),
+    'draft': ('neutral','Draft'), 'scheduled': ('info','Scheduled'),
+    'superseded': ('neutral','Superseded'), 'revoked': ('bad','Revoked'),
+    'open': ('warn','Open'), 'approved': ('ok','Approved'), 'denied': ('bad','Denied'),
+    'met': ('ok','Met'), 'partially_met': ('warn','Partially met'),
+    'not_met': ('bad','Not met'), 'not_applicable': ('neutral','N/A'),
+    'offboarded': ('neutral','Offboarded'), 'closed': ('neutral','Closed'),
+    'closing': ('warn','Closing'), 'done': ('ok','Done')
+  } %}
+  {% set tone, label = map.get(status, ('neutral', status|replace('_',' ')|title)) %}
+  <span class="chip {{ tone }}">{{ label }}</span>
+{% endmacro %}
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark"><span class="dot"></span> Trusted Supplier Program</div>
+      <div class="sub">{{ tenant.name if tenant else 'Credential vault' }}</div>
+    </div>
+    <nav class="nav">
+      {# Five destinations. Everything else is a child of one of them, indented,
+         so the sidebar reads as a place you are rather than a list of features. #}
+      <a href="/dashboard" class="{{ 'active' if nav == 'dashboard' }}">Start</a>
+      <a href="/start" class="sub {{ 'active' if nav == 'start' }}">Getting started
+        {% if counts.onboarding %}<span class="count warn">{{ counts.onboarding }}</span>{% endif %}</a>
+      <a href="/activity" class="sub {{ 'active' if nav == 'activity' }}">Activity</a>
+
+      <a href="/trust" class="{{ 'active' if nav == 'trust' }}">My Trust profile</a>
+      <a href="/profile" class="sub {{ 'active' if nav == 'profile' }}">Company profile</a>
+      <a href="/verification" class="sub {{ 'active' if nav == 'verification' }}">Verification
+        {% if counts.recheck %}<span class="count">{{ counts.recheck }}</span>{% endif %}</a>
+      <a href="/summary" class="sub {{ 'active' if nav == 'summary' }}">Control summary</a>
+      <a href="/t/{{ tenant.slug }}" class="sub">Public page</a>
+
+      <a href="/documents" class="{{ 'active' if nav == 'documents' }}">My Documentation
+        {% if counts.attention %}<span class="count bad">{{ counts.attention }}</span>{% endif %}</a>
+      <a href="/documents/upload" class="sub {{ 'active' if nav == 'upload' }}">Upload &amp; classify</a>
+      <a href="/documents/catalogue" class="sub {{ 'active' if nav == 'catalogue' }}">Add from catalogue</a>
+      <a href="/connections" class="sub {{ 'active' if nav == 'connections' }}">Cloud folders</a>
+      <a href="/documents/bulk" class="sub {{ 'active' if request.url.path.startswith('/documents/bulk') }}">Bulk upload</a>
+      <a href="/assets" class="sub {{ 'active' if nav == 'assets' }}">Asset register
+        {% if counts.calibration_due %}<span class="count warn">{{ counts.calibration_due }}</span>{% endif %}</a>
+      <a href="/groups" class="sub {{ 'active' if nav == 'groups' }}">Certificate groups</a>
+
+      <a href="/tasks" class="{{ 'active' if nav == 'tasks' }}">Actions needed
+        {% if counts.tasks %}<span class="count warn">{{ counts.tasks }}</span>{% endif %}</a>
+      <a href="/requests" class="sub {{ 'active' if nav == 'requests' }}">Access requests
+        {% if counts.requests %}<span class="count warn">{{ counts.requests }}</span>{% endif %}</a>
+      <a href="/requirements" class="sub {{ 'active' if nav == 'requirements' }}">Requirements &amp; gaps</a>
+      <a href="/questionnaires" class="sub {{ 'active' if nav == 'questionnaires' }}">Questionnaires</a>
+      <a href="/notifications" class="sub {{ 'active' if nav == 'notifications' }}">Notifications
+        {% if counts.unread %}<span class="count warn">{{ counts.unread }}</span>{% endif %}</a>
+
+      <a href="/settings" class="{{ 'active' if nav == 'settings' }}">Account management</a>
+      <a href="/clients" class="sub {{ 'active' if nav == 'clients' }}">Clients
+        {% if counts.clients %}<span class="count">{{ counts.clients }}</span>{% endif %}</a>
+      <a href="/audit" class="sub {{ 'active' if nav == 'audit' }}">Audit trail</a>
+      <a href="/lifecycle" class="sub {{ 'active' if nav == 'lifecycle' }}">Account lifecycle</a>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="who">{{ user.full_name if user else '' }}</div>
+      <div><a href="/logout">Sign out</a> · <a href="/docs">API docs</a></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <div class="crumb">{{ crumb|default('TSP') }}</div>
+        <h1>{% block heading %}{{ page_title|default('Dashboard') }}{% endblock %}</h1>
+      </div>
+      <div class="spacer"></div>
+      {% block topbar_actions %}{% endblock %}
+    </header>
+
+    <main class="content">
+      {% if break_glass %}
+      <div class="break-glass-bar">
+        <div><b>Platform support session in progress.</b>
+          {{ break_glass.admin_email }} is acting as {{ user.email }} — reason:
+          {{ break_glass.reason }}{% if break_glass.ticket_reference %} ({{ break_glass.ticket_reference }}){% endif %}.
+          Ends {{ break_glass.expires_at.strftime('%H:%M') }}.</div>
+        <form method="post" action="/admin/break-glass/end">
+          <button class="btn small danger" type="submit">End session</button></form>
+      </div>
+      {% endif %}
+      {% for category, message in flashes %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+<script>
+// Progressive disclosure in the sidebar. A section's pages appear when the
+// section is open; open by default only where the current page lives or where
+// a badge says something needs attention. Any section can be opened by a
+// click, and the choice is remembered for this browser.
+(function () {
+  const nav = document.querySelector('.sidebar .nav'); if (!nav) return;
+  const links = Array.from(nav.querySelectorAll('a'));
+  let remembered = {};
+  try { remembered = JSON.parse(localStorage.getItem('tsp.nav') || '{}'); } catch (e) {}
+  const sections = [];
+  links.forEach(a => {
+    if (!a.classList.contains('sub')) sections.push({ head: a, subs: [] });
+    else if (sections.length) sections[sections.length - 1].subs.push(a);
+  });
+  const key = h => h.getAttribute('href');
+  function apply(sec, open) {
+    sec.head.classList.toggle('open', open);
+    sec.subs.forEach(s => s.classList.toggle('shown', open));
+  }
+  sections.forEach(sec => {
+    const relevant = sec.head.classList.contains('active')
+      || sec.subs.some(s => s.classList.contains('active'))
+      || sec.head.querySelector('.count.bad, .count.warn')
+      || sec.subs.some(s => s.querySelector('.count.bad, .count.warn'));
+    const choice = remembered[key(sec.head)];
+    apply(sec, choice === undefined ? !!relevant : !!choice);
+    if (!sec.subs.length) return;
+    sec.head.addEventListener('click', e => {
+      // First click on a closed section opens it; the page itself is one more
+      // click away. On an open section the link behaves normally.
+      if (!sec.head.classList.contains('open')) {
+        e.preventDefault(); apply(sec, true);
+        remembered[key(sec.head)] = true;
+        try { localStorage.setItem('tsp.nav', JSON.stringify(remembered)); } catch (err) {}
+      }
+    });
+    sec.head.insertAdjacentHTML('beforeend', '');
+  });
+})();
+</script>
+</body>
+</html>

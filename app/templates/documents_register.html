@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block topbar_actions %}<a class="btn" href="/documents/catalogue">Add a document</a>{% endblock %}
+{% block content %}
+<div class="stack">
+  <div class="card"><div class="body">
+    <div class="split wrap" style="justify-content:space-between">
+      <div class="pill-filter">
+        <a href="/documents" class="{{ 'active' if not status and not domain }}">All</a>
+        <a href="/documents?status=expired" class="{{ 'active' if status == 'expired' }}">Expired</a>
+        <a href="/documents?status=expiring_soon" class="{{ 'active' if status == 'expiring_soon' }}">Expiring</a>
+        <a href="/documents?status=missing" class="{{ 'active' if status == 'missing' }}">No version</a>
+        <a href="/documents?status=valid" class="{{ 'active' if status == 'valid' }}">Valid</a>
+      </div>
+      <form method="get" class="split">
+        {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
+        <select name="domain" onchange="this.form.submit()" style="width:auto">
+          <option value="">Every domain</option>
+          {% for code, label in domains.items() %}
+            <option value="{{ code }}" {{ 'selected' if domain == code }}>{{ code }} — {{ label }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    </div>
+  </div></div>
+
+  <div class="card">
+    <header><h2>{{ rows|length }} credential{{ 's' if rows|length != 1 }}</h2>
+      <span class="spacer"></span><span class="small muted">Sorted by risk, not alphabetically</span></header>
+    {% if rows %}
+    <table>
+      <thead><tr><th>Code</th><th>Credential</th><th>Status</th><th>Assurance</th>
+        <th>Certificate no.</th><th class="num">Expires</th><th>Sens.</th></tr></thead>
+      <tbody>
+      {% for row in rows %}
+        <tr>
+          <td class="mono small nowrap">{{ row.type.code }}</td>
+          <td><a href="/documents/{{ row.document.id }}">{{ row.document.title }}</a>
+            <div class="small muted">{{ row.type.domain_name }}</div></td>
+          <td>{{ status_chip(row.document.derived_status) }}</td>
+          <td>{% if row.version %}{{ ladder(row.version.assurance_level) }}{% else %}<span class="muted small">—</span>{% endif %}</td>
+          <td class="mono small">{{ row.version.certificate_number if row.version and row.version.certificate_number else '—' }}</td>
+          <td class="num nowrap">{% if row.version and row.version.expiry_date %}{{ row.version.expiry_date|d }}
+            <div class="small muted">{{ row.days }}d</div>{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td><span class="sens {{ row.type.sensitivity }}" title="{{ sensitivity_name(row.type.sensitivity) }}">{{ row.type.sensitivity }}</span></td>
+        </tr>
+      {% endfor %}
+      </tbody></table>
+    {% else %}
+    <div class="table-empty">Nothing here yet.
+      <div style="margin-top:12px"><a class="btn" href="/documents/catalogue">Pick from the catalogue</a></div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<div class="stack">
+  <div class="note">The catalogue is platform reference data shared by every entity. Retiring a
+    type hides it from the picker; documents already held under it are unaffected.</div>
+  <div class="card"><div class="body">
+    <form method="get" class="field-row" style="margin-bottom:0">
+      <div class="field" style="margin-bottom:0"><label for="q">Search</label>
+        <input id="q" name="q" value="{{ q }}"></div>
+      <div class="field" style="margin-bottom:0"><label for="domain">Domain</label>
+        <select id="domain" name="domain" onchange="this.form.submit()">
+          <option value="">All domains</option>
+          {% for code, label in domains.items() %}<option value="{{ code }}" {{ 'selected' if domain == code }}>{{ code }} — {{ label }}</option>{% endfor %}
+        </select></div>
+    </form>
+  </div></div>
+  <div class="card"><header><h2>{{ types|length }} document types</h2></header>
+    <table><thead><tr><th>Code</th><th>Name</th><th>Route</th><th>Sens.</th><th class="num">Crit.</th>
+      <th class="num">In use</th><th>State</th><th></th></tr></thead><tbody>
+      {% for dtype in types %}
+      <tr><td class="mono small">{{ dtype.code }}</td>
+        <td>{{ dtype.name }}<div class="small muted">{{ dtype.typical_issuer }}</div></td>
+        <td class="small">{{ dtype.verification_route|replace('_',' ') }}</td>
+        <td><span class="sens {{ dtype.sensitivity }}">{{ dtype.sensitivity }}</span></td>
+        <td class="num">{{ dtype.criticality }}</td>
+        <td class="num">{{ usage.get(dtype.code, 0) }}</td>
+        <td>{% if dtype.is_active %}<span class="chip ok plain">active</span>
+          {% else %}<span class="chip neutral plain">retired</span>{% endif %}</td>
+        <td class="right"><form method="post" action="/admin/catalogue/{{ dtype.code }}/toggle">
+          <button class="btn small secondary" type="submit">{{ 'Retire' if dtype.is_active else 'Restore' }}</button></form></td></tr>
+      {% endfor %}
+    </tbody></table>
+  </div>
+</div>
+{% endblock %}

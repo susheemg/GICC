@@ -1,0 +1,109 @@
+{% extends "admin_base.html" %}
+{% block content %}
+{% if new_password %}
+<div class="flash warn"><b>Password set — pass it to the user securely, then have them change it.</b>
+  <div class="mono" style="margin-top:6px">{{ new_password }}</div></div>
+{% endif %}
+<div class="grid sidebar-right">
+  <div class="stack">
+    <div class="card"><div class="body">
+      <form method="get" class="field-row" style="margin-bottom:0">
+        <div class="field" style="margin-bottom:0"><label for="q">Search users</label>
+          <input id="q" name="q" value="{{ q }}" placeholder="Name or email"></div>
+        <div class="field" style="margin-bottom:0"><label for="tenant_id">Entity</label>
+          <select id="tenant_id" name="tenant_id" onchange="this.form.submit()">
+            <option value="">Every entity</option>
+            {% for id, t in tenants.items() %}<option value="{{ id }}" {{ 'selected' if tenant_id == id }}>{{ t.name }}</option>{% endfor %}
+          </select></div>
+      </form>
+    </div></div>
+
+    <div class="card"><header><h2>{{ users|length }} users across {{ tenants|length }} entities</h2></header>
+      <table><thead><tr><th>User</th><th>Entity</th><th>Role and access</th><th>State</th><th></th></tr></thead>
+        <tbody>
+        {% for member in users %}
+        <tr>
+          <td>{{ member.full_name }}<div class="small muted">{{ member.email }}</div></td>
+          <td class="small">{{ tenants[member.tenant_id].name if member.tenant_id in tenants else '—' }}</td>
+          <td>
+            <form method="post" action="/admin/users/{{ member.id }}/update" class="split wrap">
+              <select name="role" style="width:auto">
+                {% for key in role_order %}<option value="{{ key }}" {{ 'selected' if member.role == key }}>{{ roles[key].label }}</option>{% endfor %}
+              </select>
+              <label class="check" style="margin:0"><input type="checkbox" name="sensitive_access" {{ 'checked' if member.sensitive_access }}> C/S</label>
+              <button class="btn small secondary" type="submit">Save</button>
+            </form>
+          </td>
+          <td>{% if member.is_active %}<span class="chip ok plain">active</span>
+            {% else %}<span class="chip bad plain">disabled</span>{% endif %}</td>
+          <td class="right nowrap">
+            <form method="post" action="/admin/users/{{ member.id }}/toggle-active" style="display:inline">
+              <button class="btn small secondary" type="submit">{{ 'Disable' if member.is_active else 'Enable' }}</button></form>
+            <form method="post" action="/admin/users/{{ member.id }}/reset-password" class="split" style="display:inline-flex">
+              <input name="new_password" placeholder="New password" style="width:130px">
+              <button class="btn small secondary" type="submit">Reset</button></form>
+            <form method="post" action="/admin/users/{{ member.id }}/move" class="split" style="display:inline-flex">
+              <select name="tenant_id" style="width:auto">
+                {% for id, t in tenants.items() %}<option value="{{ id }}">{{ t.name }}</option>{% endfor %}
+              </select>
+              <button class="btn small secondary" type="submit">Move</button></form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody></table>
+    </div>
+
+    <div class="card"><header><h3>Role capabilities</h3></header>
+      <table><thead><tr><th>Role</th><th>What it can do</th></tr></thead><tbody>
+        {% for key in role_order %}
+        <tr><td><b>{{ roles[key].label }}</b></td><td class="small">{{ roles[key].summary }}</td></tr>
+        {% endfor %}
+        <tr><td><b>Sensitive access</b></td>
+          <td class="small">Orthogonal to role. Required to open Confidential and Special-category
+            documents.</td></tr>
+      </tbody></table>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card"><header><h3>Create a user</h3></header><div class="body">
+      <form method="post" action="/admin/users">
+        <div class="field"><label for="c_tenant">Entity</label>
+          <select id="c_tenant" name="tenant_id" required>
+            {% for id, t in tenants.items() %}<option value="{{ id }}">{{ t.name }}</option>{% endfor %}
+          </select></div>
+        <div class="field"><label for="c_email">Email</label>
+          <input id="c_email" name="email" type="email" required></div>
+        <div class="field"><label for="c_name">Full name</label>
+          <input id="c_name" name="full_name" required></div>
+        <div class="field"><label for="c_role">Role</label>
+          <select id="c_role" name="role">
+            {% for key in role_order %}<option value="{{ key }}">{{ roles[key].label }}</option>{% endfor %}
+          </select></div>
+        <div class="check"><input type="checkbox" id="c_sens" name="sensitive_access">
+          <label for="c_sens" style="margin:0">Can open Confidential and Special-category documents</label></div>
+        <div class="field"><label for="c_pass">Initial password</label>
+          <input id="c_pass" name="password" required minlength="8"></div>
+        <button class="btn" type="submit">Create user</button>
+      </form>
+    </div></div>
+
+    <div class="card"><header><h3>Operators</h3></header>
+      <table><tbody>
+        {% for operator in admins %}
+        <tr><td>{{ operator.full_name }}<div class="small muted">{{ operator.email }}</div></td>
+          <td class="right small">{{ operator.last_login_at.strftime('%d %b') if operator.last_login_at else 'never' }}</td></tr>
+        {% endfor %}
+      </tbody></table>
+      <div class="body"><form method="post" action="/admin/operators">
+        <div class="field"><label for="o_email">New operator email</label>
+          <input id="o_email" name="email" type="email" required></div>
+        <div class="field"><label for="o_name">Name</label><input id="o_name" name="full_name" required></div>
+        <div class="field"><label for="o_pass">Password</label>
+          <input id="o_pass" name="password" required minlength="8"></div>
+        <button class="btn small secondary" type="submit">Add operator</button>
+      </form></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

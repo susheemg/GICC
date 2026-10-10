@@ -1,0 +1,17 @@
+{% extends "admin_base.html" %}
+{% block topbar_actions %}<a class="btn secondary" href="/admin/analytics">Back to analytics</a>{% endblock %}
+{% block content %}
+<div class="card"><header><h2>{{ rows|length }} entit{{ 'y' if rows|length == 1 else 'ies' }}</h2></header>
+  {% if rows %}
+  <table><thead><tr><th>Entity</th><th>Detail</th><th>Note</th><th></th></tr></thead><tbody>
+    {% for row in rows %}
+    <tr><td><a href="/admin/tenants/{{ row.tenant.id }}">{{ row.tenant.name }}</a>
+        <div class="small muted mono">{{ row.tenant.slug }}</div></td>
+      <td class="small">{{ row.detail }}</td>
+      <td class="small muted">{{ row.note }}</td>
+      <td class="right"><a class="btn small secondary" href="/admin/tenants/{{ row.tenant.id }}">Open</a></td></tr>
+    {% endfor %}
+  </tbody></table>
+  {% else %}<div class="table-empty">Nothing matches.</div>{% endif %}
+</div>
+{% endblock %}

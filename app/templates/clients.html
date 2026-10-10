@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="grid sidebar-right">
+  <div class="card"><header><h2>{{ rows|length }} client{{ 's' if rows|length != 1 }}</h2></header>
+    {% if rows %}
+    <table><thead><tr><th>Client</th><th>Relationship</th><th class="num">Grants</th>
+      <th class="num">Documents</th><th>Soonest expiry</th><th>Status</th></tr></thead>
+      <tbody>
+      {% for row in rows %}
+        <tr><td><a href="/clients/{{ row.client.id }}">{{ row.client.name }}</a>
+            {% if row.client.internal_reference %}<div class="small muted mono">{{ row.client.internal_reference }}</div>{% endif %}</td>
+          <td class="small">{{ row.client.relationship_type }}</td>
+          <td class="num">{{ row.grants|length }}</td>
+          <td class="num">{{ row.documents }}</td>
+          <td class="small">{{ row.next_expiry|d }}</td>
+          <td>{{ status_chip(row.client.status) }}</td></tr>
+      {% endfor %}
+      </tbody></table>
+    {% else %}<div class="table-empty">No clients yet. Adding one and issuing a grant is the
+      moment this stops being a filing cabinet.</div>{% endif %}
+  </div>
+
+  <div class="card"><header><h3>Add a client</h3></header><div class="body">
+    <form method="post" action="/clients">
+      <div class="field"><label for="name">Client organisation</label>
+        <input id="name" name="name" required placeholder="Meridian Building Society"></div>
+      <div class="field-row">
+        <div class="field"><label for="relationship_type">Relationship</label>
+          <select id="relationship_type" name="relationship_type">
+            <option value="customer">Customer</option><option value="prospect">Prospect</option>
+            <option value="partner">Partner</option><option value="regulator">Regulator</option>
+          </select></div>
+        <div class="field"><label for="country">Country</label>
+          <input id="country" name="country" value="GB" maxlength="2"></div>
+      </div>
+      <div class="field"><label for="internal_reference">Your reference <span class="hint">optional</span></label>
+        <input id="internal_reference" name="internal_reference" placeholder="CL-1042"></div>
+      <div class="field"><label for="contact_email">First contact email</label>
+        <input id="contact_email" name="contact_email" type="email" placeholder="vendorrisk@client.example"></div>
+      <div class="field"><label for="contact_name">Contact name</label>
+        <input id="contact_name" name="contact_name"></div>
+      <button class="btn" type="submit">Add client</button>
+    </form>
+  </div></div>
+</div>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block topbar_actions %}
+<form method="post" action="/trust/recompute"><button class="btn secondary" type="submit">Recompute</button></form>
+<form method="post" action="/trust/publish">
+  <button class="btn" type="submit">{{ 'Unpublish band' if score.published else 'Publish band' }}</button></form>
+{% endblock %}
+{% block content %}
+<div class="stack">
+  {% if score.withheld_reason %}
+  <div class="flash bad"><b>Score withheld.</b> {{ score.withheld_reason }}</div>
+  {% endif %}
+
+  <div class="note">The Trust Index measures <b>coverage and evidence quality</b> — whether this
+    company can evidence its controls. It is not a judgement of the company, and it is not a
+    credit rating.</div>
+
+  <div class="grid c4">
+    <div class="kpi"><div class="label">Composite</div>
+      <div class="value {{ band_tone }}">{{ score.composite|round|int }}</div>
+      <div class="meter {{ band_tone }}" style="margin-top:8px"><span style="width:{{ score.composite }}%"></span></div>
+      <div class="foot">{{ score.band }} · algorithm v{{ score.algorithm_version }}</div></div>
+    <div class="kpi"><div class="label">Computed</div>
+      <div class="value" style="font-size:18px">{{ score.computed_at.strftime('%d %b %H:%M') }}</div>
+      <div class="foot">recomputed on every evidence change</div></div>
+    <div class="kpi"><div class="label">Published to buyers</div>
+      <div class="value" style="font-size:18px">{{ 'Band only' if score.published else 'Private' }}</div>
+      <div class="foot">the number is never published</div></div>
+    <div class="kpi"><div class="label">Modifiers</div>
+      <div class="value">{{ modifiers|length }}</div>
+      <div class="foot">{% for m in modifiers %}{{ m.name }} ({{ '%+d'|format(m.points) }}){{ '; ' if not loop.last }}{% endfor %}{{ 'none applied' if not modifiers }}</div></div>
+  </div>
+
+  {% if action %}
+  <div class="card"><header><h2>The single change that moves this most</h2></header>
+    <div class="body"><div class="split wrap" style="justify-content:space-between">
+      <div><b>{{ action.text }}</b>
+        <div class="small muted">{{ action.domain }} · worth roughly {{ action.gain }} points</div></div>
+      <form method="post" action="/documents/create">
+        <input type="hidden" name="type_code" value="{{ action.type_code }}">
+        <button class="btn" type="submit">{{ 'Add it' if action.kind == 'add' else ('Replace it' if action.kind == 'renew' else 'Open it') }}</button>
+      </form>
+    </div></div>
+  </div>
+  {% endif %}
+
+  <div class="card"><header><h2>By risk domain</h2><span class="spacer"></span>
+
+    <span class="small muted">Every point traces to a document version</span></header>
+    <table><thead><tr><th>Domain</th><th>Weight</th><th style="width:200px">Score</th>
+      <th class="num">Expected</th><th class="num">Held</th><th class="num">Verified</th>
+      <th class="num">Impaired</th></tr></thead><tbody>
+      {% for entry in domains %}
+      <tr>
+        <td><b>{{ entry.row.label }}</b></td>
+        <td class="small">{{ (entry.row.weight * 100)|round|int }}%</td>
+        <td>
+          <div class="split"><span class="mono small" style="width:34px">{{ entry.row.score|round|int }}</span>
+            <div class="meter {{ 'ok' if entry.row.score >= 70 else ('warn' if entry.row.score >= 40 else 'bad') }}" style="flex:1">
+              <span style="width:{{ entry.row.score }}%"></span></div></div>
+        </td>
+        <td class="num">{{ entry.row.expected }}</td>
+        <td class="num">{{ entry.row.held }}</td>
+        <td class="num">{{ entry.row.verified }}</td>
+        <td class="num {{ 'bad' if entry.row.impaired }}">{{ entry.row.impaired }}</td>
+      </tr>
+      <tr><td colspan="7" style="padding-top:0">
+        <div class="split wrap" style="gap:6px">
+          {% for item in entry.detail %}
+            {% if item.state == 'missing' %}
+              <span class="chip neutral plain" title="Not held">{{ item.code }} missing</span>
+            {% elif item.state in ['expired','suspended'] %}
+              <span class="chip bad plain">{{ item.code }} {{ item.state }}</span>
+            {% elif item.assurance in ['L0','L1'] %}
+              <span class="chip warn plain">{{ item.code }} {{ item.assurance }}</span>
+            {% else %}
+              <span class="chip ok plain">{{ item.code }} {{ item.assurance }}</span>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </td></tr>
+      {% endfor %}
+    </tbody></table>
+  </div>
+
+  {% if history|length > 1 %}
+  <div class="card"><header><h2>Trend</h2></header><div class="body">
+    <div class="split" style="align-items:flex-end;gap:10px;height:120px">
+      {% for point in history %}
+      <div style="flex:1;text-align:center">
+        <div style="background:var(--steel);height:{{ (point.composite * 0.9)|round|int }}px;
+                    border-radius:2px 2px 0 0" title="{{ point.composite }}"></div>
+        <div class="small muted" style="margin-top:4px">{{ point.computed_at.strftime('%d %b') }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="small muted" style="margin-top:10px">Historical scores are never recomputed under
+      a new algorithm version — that would rewrite the trend buyers rely on.</p>
+  </div></div>
+  {% endif %}
+</div>
+{% endblock %}

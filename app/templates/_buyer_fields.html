@@ -1,0 +1,40 @@
+{# The visible identity block. One partial, so the claimed/unclaimed address
+   rule cannot be applied differently on one page than another. #}
+<table class="table">
+  <tbody>
+    <tr><td class="muted small">Legal name</td><td>{{ entry.legal_name }}</td></tr>
+    {% if entry.trading_name %}
+    <tr><td class="muted small">Trading name</td><td>{{ entry.trading_name }}</td></tr>{% endif %}
+    <tr><td class="muted small">Country</td><td>{{ entry.country }}</td></tr>
+    <tr><td class="muted small">Registry number</td>
+      <td class="mono">{{ entry.registry_number or '—' }}
+        {% if entry.registry_authority %}<span class="small muted">{{ entry.registry_authority }}</span>{% endif %}</td></tr>
+    <tr><td class="muted small">LEI</td><td class="mono">{{ entry.lei or '—' }}</td></tr>
+    {% if entry.vat_number %}
+    <tr><td class="muted small">VAT number</td><td class="mono">{{ entry.vat_number }}</td></tr>{% endif %}
+    {% if entry.duns %}
+    <tr><td class="muted small">DUNS</td><td class="mono">{{ entry.duns }}</td></tr>{% endif %}
+    <tr><td class="muted small">Registered address</td>
+      <td>
+        {% if entry.registered_address %}{{ entry.registered_address|replace('\n', ', ') }}
+        {% elif entry.address_withheld %}
+          {{ entry.locality or 'Not shown' }}
+          <div class="small muted">Full address is shown once this company claims its
+            profile. It has not joined yet, and a registered address is often a home
+            address.</div>
+        {% else %}—{% endif %}
+      </td></tr>
+    {% if entry.incorporated_on %}
+    <tr><td class="muted small">Incorporated</td><td>{{ entry.incorporated_on.strftime('%d %b %Y') }}</td></tr>{% endif %}
+    {% if entry.sector_code %}
+    <tr><td class="muted small">Sector</td><td>{{ entry.sector_code }}</td></tr>{% endif %}
+    {% if entry.website %}
+    <tr><td class="muted small">Website</td><td>{{ entry.website }}</td></tr>{% endif %}
+    <tr><td class="muted small">Identity</td>
+      <td><span class="pill {{ 'good' if entry.identity_verification != 'unverified' else 'muted' }}">{{ entry.identity_verification.replace('_', ' ') }}</span></td></tr>
+    <tr><td class="muted small">On TSP</td>
+      <td>{% if entry.claimed and entry.on_platform %}<span class="pill good">claimed workspace</span>
+          {% elif entry.claimed %}<span class="pill muted">claimed</span>
+          {% else %}<span class="pill warn">not joined yet</span>{% endif %}</td></tr>
+  </tbody>
+</table>

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "start_shell.html" import stepper, why, skip %}
+{% block content %}
+{{ stepper(state, 3) }}
+<div class="grid sidebar-right">
+  <div class="stack">
+    <div class="card"><header><h2>{{ meta.title }}</h2></header><div class="body">
+      {{ why(meta) }}
+      {% if state.milestones.m1 %}
+      <div class="flash ok"><b>Milestone M1 reached.</b> You have a machine-verified
+        credential. That is the thing buyers cannot get from a PDF in an email.</div>
+      {% endif %}
+      <p>Drop a certificate in and we will work out what it is, read the dates and the
+        certificate number off it, and check it against the issuing source.</p>
+      <div class="split" style="margin-top:14px">
+        <a class="btn" href="/documents/upload">Upload a certificate</a>
+        {{ skip(3, 'I will do this later') }}
+      </div>
+    </div></div>
+
+    {% if recommended %}
+    <div class="card"><header><h2>Start with one of these</h2><span class="spacer"></span>
+      <span class="small muted">Based on who buys from you</span></header>
+      <table><thead><tr><th>Code</th><th>Document</th><th>Typical issuer</th><th></th></tr></thead>
+        <tbody>
+        {% for dtype in recommended %}
+        <tr><td class="mono small">{{ dtype.code }}</td>
+          <td>{{ dtype.name }}</td>
+          <td class="small muted">{{ dtype.typical_issuer }}</td>
+          <td class="right"><form method="post" action="/documents/create">
+            <input type="hidden" name="type_code" value="{{ dtype.code }}">
+            <button class="btn small secondary" type="submit">Add this</button></form></td></tr>
+        {% endfor %}
+      </tbody></table>
+      <div class="body"><a class="small" href="/documents/catalogue">Or browse all 198 types</a></div>
+    </div>
+    {% endif %}
+
+    {% if held %}
+    <div class="card"><div class="body">
+      <div class="split" style="justify-content:space-between">
+        <div><b>You already have a document in the register.</b>
+          <div class="small muted">This step is complete — continue when you are ready.</div></div>
+        <a class="btn" href="/start/4">Continue</a>
+      </div>
+    </div></div>
+    {% endif %}
+  </div>
+
+  <div class="card"><header><h3>What happens to your file</h3></header><div class="body">
+    <p class="small">Text is read from it locally, matched against the catalogue, and the
+      dates and numbers on it are <b>proposed</b> for the form. Nothing is stored as fact
+      until you confirm it, and a field we are unsure about is left blank rather than
+      guessed.</p>
+    <p class="small muted" style="margin-top:10px">Classification never sets an assurance
+      level. That still comes only from checking against the issuing source.</p>
+  </div></div>
+</div>
+{% endblock %}

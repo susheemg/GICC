@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack">
+  <div class="card"><header><h2>{{ open_tasks|length }} open</h2><span class="spacer"></span>
+    <span class="small muted">Reminders fire at 90, 60, 30, 7 and 0 days before expiry</span></header>
+    {% if open_tasks %}
+    <table><thead><tr><th>Task</th><th>Due</th><th>Severity</th><th></th></tr></thead><tbody>
+      {% for task in open_tasks %}
+      <tr><td>{% if task.document_id %}<a href="/documents/{{ task.document_id }}">{{ task.title }}</a>
+          {% else %}{{ task.title }}{% endif %}
+          <div class="small muted">{{ task.kind }}</div></td>
+        <td class="small nowrap">{{ task.due_at|d }}
+          {% if task.due_at %}<div class="muted">{{ task.due_at|days_until }} days</div>{% endif %}</td>
+        <td><span class="chip {{ 'bad' if task.severity == 'high' else 'warn' }} plain">{{ task.severity }}</span></td>
+        <td class="right"><form method="post" action="/tasks/{{ task.id }}/close">
+          <button class="btn small secondary" type="submit">Close</button></form></td></tr>
+      {% endfor %}
+    </tbody></table>
+    {% else %}<div class="table-empty">Nothing outstanding.</div>{% endif %}
+  </div>
+  {% if done_tasks %}
+  <div class="card"><header><h3>Recently closed</h3></header>
+    <table><tbody>{% for task in done_tasks %}
+      <tr><td class="small">{{ task.title }}</td>
+        <td class="right small muted">{{ task.closed_at.strftime('%d %b %Y') if task.closed_at }}</td></tr>
+    {% endfor %}</tbody></table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block topbar_actions %}<a class="btn secondary" href="/clients">All clients</a>{% endblock %}
+{% block content %}
+{% if new_link %}
+<div class="flash warn"><b>Share link created — copy it now.</b>
+  <div class="mono" style="margin-top:6px;word-break:break-all">{{ base_url }}/s/{{ new_link }}</div>
+  <div class="small" style="margin-top:6px">Only the hash of this token is stored. It cannot be shown again.</div>
+</div>
+{% endif %}
+
+<div class="grid sidebar-right">
+  <div class="stack">
+    <div class="card"><header><h2>Access grants</h2><span class="spacer"></span>
+      <span class="small muted">{{ visible|length }} documents currently reachable</span></header>
+      {% if grants %}
+      <table><thead><tr><th>Scope</th><th>Permission</th><th>Conditions</th><th>Window</th>
+        <th>Status</th><th></th></tr></thead><tbody>
+        {% for grant in grants %}
+        <tr>
+          <td>{% if grant.scope_kind == 'group' and grant.scope_id in groups %}
+              <a href="/groups/{{ grant.scope_id }}">{{ groups[grant.scope_id].name }}</a>
+            {% else %}{{ grant.scope_kind|replace('_',' ') }}{% endif %}
+            {% if grant.purpose %}<div class="small muted">{{ grant.purpose }}</div>{% endif %}</td>
+          <td class="small">{{ grant.permission_level|replace('_',' ') }}</td>
+          <td class="small">{% if grant.nda_required %}<span class="chip info plain">NDA</span>{% endif %}
+            {% if grant.watermark_required %}<span class="chip neutral plain">watermark</span>{% endif %}
+            {% if not grant.download_allowed %}<span class="chip warn plain">view only</span>{% endif %}</td>
+          <td class="small nowrap">{{ grant.starts_at|d }} → {{ grant.ends_at|d }}</td>
+          <td>{{ status_chip(grant.status) }}
+            {% if grant.last_used_at %}<div class="small muted">used {{ grant.last_used_at.strftime('%d %b') }}</div>{% endif %}</td>
+          <td class="right nowrap">
+            {% if grant_is_live(grant) %}
+            <form method="post" action="/grants/{{ grant.id }}/share-link" style="display:inline">
+              <input type="hidden" name="days" value="14">
+              <button class="btn small secondary" type="submit">Share link</button></form>
+            <form method="post" action="/grants/{{ grant.id }}/revoke" style="display:inline">
+              <input type="hidden" name="reason" value="Revoked by the supplier">
+              <button class="btn small danger" type="submit">Revoke</button></form>
+            {% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody></table>
+      {% else %}<div class="table-empty">No grants yet.</div>{% endif %}
+    </div>
+
+    <div class="card"><header><h3>Share links</h3></header>
+      {% if links %}
+      <table><thead><tr><th>Link</th><th class="num">Views</th><th>Expires</th><th>Status</th><th></th></tr></thead><tbody>
+        {% for link in links %}
+        <tr><td class="small">{{ link.label or 'Untitled link' }}
+            <div class="muted mono small">token stored as hash only</div></td>
+          <td class="num">{{ link.view_count }}{% if link.max_views %} / {{ link.max_views }}{% endif %}</td>
+          <td class="small">{{ link.expires_at|d }}</td>
+          <td>{% if link.revoked_at %}{{ status_chip('revoked') }}{% else %}{{ status_chip('active') }}{% endif %}</td>
+          <td class="right">{% if not link.revoked_at %}
+            <form method="post" action="/share-links/{{ link.id }}/revoke">
+              <button class="btn small danger" type="submit">Revoke</button></form>{% endif %}</td></tr>
+        {% endfor %}
+      </tbody></table>
+      {% else %}<div class="table-empty small">No links issued.</div>{% endif %}
+    </div>
+
+    <div class="card"><header><h3>What this client has looked at</h3></header>
+      {% if views %}
+      <table><thead><tr><th>When</th><th>Viewer</th><th>Action</th><th>IP</th></tr></thead><tbody>
+        {% for view in views %}
+        <tr><td class="small nowrap">{{ view.viewed_at.strftime('%d %b %Y %H:%M') }}</td>
+          <td class="small">{{ view.viewer_email or 'anonymous' }}</td>
+          <td><span class="chip info plain">{{ view.action|replace('_',' ') }}</span></td>
+          <td class="small mono">{{ view.ip or '—' }}</td></tr>
+        {% endfor %}
+      </tbody></table>
+      {% else %}<div class="table-empty small">Nothing opened yet.</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card"><header><h3>Grant access</h3></header><div class="body">
+      <form method="post" action="/clients/{{ client.id }}/grants">
+        <div class="field"><label for="group_id">Certificate group</label>
+          <select id="group_id" name="group_id" required>
+            {% for group in groups.values() %}
+            <option value="{{ group.id }}">{{ group.name }} ({{ group.sensitivity_ceiling }}{{ ', NDA' if group.nda_required }})</option>
+            {% endfor %}
+          </select></div>
+        <div class="field"><label for="permission_level">Permission</label>
+          <select id="permission_level" name="permission_level">
+            <option value="view">View only</option>
+            <option value="view_download">View and download</option>
+          </select></div>
+        <div class="field"><label for="days">Days <span class="hint">capped at the group ceiling</span></label>
+          <input id="days" name="days" type="number" placeholder="90" min="1"></div>
+        <div class="field"><label for="contact_id">Named contact</label>
+          <select id="contact_id" name="contact_id"><option value="">Account-wide</option>
+            {% for contact in contacts %}<option value="{{ contact.id }}">{{ contact.email }}</option>{% endfor %}
+          </select></div>
+        <div class="field"><label for="purpose">Purpose <span class="hint">shown to the client</span></label>
+          <input id="purpose" name="purpose" required placeholder="Annual third-party review"></div>
+        <button class="btn" type="submit">Grant access</button>
+      </form>
+    </div></div>
+
+    <div class="card"><header><h3>Contacts</h3></header>
+      <table><tbody>
+        {% for contact in contacts %}
+        <tr><td>{{ contact.full_name or contact.email }}
+          <div class="small muted">{{ contact.email }}{{ ' · ' ~ contact.job_title if contact.job_title }}</div>
+          {% if contact.nda_accepted_at %}<span class="chip ok plain small">accepted confidentiality {{ contact.nda_accepted_at.strftime('%d %b') }}</span>{% endif %}</td></tr>
+        {% else %}<tr><td class="small muted">No contacts.</td></tr>
+        {% endfor %}
+      </tbody></table>
+      <div class="body"><form method="post" action="/clients/{{ client.id }}/contacts">
+        <div class="field"><label for="email">Add a contact</label>
+          <input id="email" name="email" type="email" required placeholder="name@client.example"></div>
+        <div class="field"><label for="full_name">Name</label><input id="full_name" name="full_name"></div>
+        <button class="btn small secondary" type="submit">Add contact</button>
+      </form></div>
+    </div>
+
+    {% if client.status == 'active' %}
+    <div class="card"><header><h3>Offboard</h3></header><div class="body">
+      <p class="small muted">Revokes every live grant in one action and writes a revocation record
+        the client can be shown.</p>
+      <form method="post" action="/clients/{{ client.id }}/offboard">
+        <div class="field"><label for="reason">Reason</label>
+          <input id="reason" name="reason" required placeholder="Contract ended 31 Dec"></div>
+        <button class="btn danger" type="submit">Offboard {{ client.name }}</button>
+      </form>
+    </div></div>
+    {% else %}
+    <div class="card"><div class="body"><span class="chip neutral">Offboarded {{ client.offboarded_at|d }}</span>
+      <p class="small muted" style="margin-top:8px">{{ client.offboard_reason }}</p></div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

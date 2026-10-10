@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="stack" style="max-width:900px">
+  <div class="card pad">
+    <div class="muted small">{{ record.path }} · {{ connection.folder_name }}
+      {% if record.state == 'removed' %}· <span style="color:var(--bad)">removed from the folder</span>{% endif %}</div>
+    {% if record.document_id %}<p class="small" style="margin-bottom:0"><a href="/documents/{{ record.document_id }}">Open the credential and its full version history</a></p>{% endif %}
+  </div>
+
+  <div class="card pad">
+    <header><h3>Revision history</h3></header>
+    <p class="small muted">Every distinct revision of this file the platform has seen,
+      newest first, and the register version each one produced.</p>
+    {% for r in revisions %}
+    <div style="padding:14px 0;border-bottom:1px solid var(--line)">
+      <div class="split">
+        <strong>{{ r.revision.change|capitalize }}</strong>
+        <span class="small muted">{{ r.revision.seen_at.strftime('%d %b %Y %H:%M') }} UTC</span>
+        <div class="spacer"></div>
+        {% if r.version %}<span class="small">register v{{ r.version.version_no }}
+          <span class="chip {{ 'ok' if r.version.status == 'active' else 'warn' }} plain">{{ r.version.status }}</span></span>{% endif %}
+      </div>
+      <div class="small muted" style="margin-top:4px">
+        {% if r.revision.type_code %}Filed as <span class="mono">{{ r.revision.type_code }}</span>
+          {% if r.revision.confidence is not none %}({{ (r.revision.confidence * 100)|round|int }}% confidence){% endif %} · {% endif %}
+        {% if r.revision.content_hash %}<span class="mono">sha256 {{ r.revision.content_hash[:12] }}…</span>{% endif %}
+        {% if r.version and r.version.expiry_date %} · expires {{ r.version.expiry_date.strftime('%d %b %Y') }}{% endif %}
+      </div>
+      {% if r.findings.entries %}
+      <div class="small" style="margin-top:6px">
+        {% for e in r.findings.entries %}
+          <div>{{ 'QR code' if e.via == 'qr' else 'Printed link' }} →
+            <span class="mono">{{ e.host }}</span>
+            {% if e.kind == 'authority' %}<span class="chip ok plain">{{ e.authority }}</span>
+            {% elif e.kind == 'lookalike' %}<span class="chip bad plain">look-alike</span> {{ e.reason }}
+            {% else %}<span class="chip plain">not a recognised authority</span>{% endif %}</div>
+        {% endfor %}
+        {% if r.findings.qr_text_disagree %}<div style="color:var(--bad);margin-top:4px">The printed
+          link names a real authority but the QR code does not go there — a common sign of an altered certificate.</div>{% endif %}
+      </div>
+      {% endif %}
+      {% if r.revision.note %}<div class="small" style="margin-top:6px">{{ r.revision.note }}</div>{% endif %}
+    </div>
+    {% else %}<p class="table-empty">No revisions recorded.</p>{% endfor %}
+    <p class="small muted" style="margin-bottom:0">A link or QR code says where to check, not that the check passed.
+      It earns no assurance on its own — the verification that follows it does.</p>
+  </div>
+</div>
+{% endblock %}

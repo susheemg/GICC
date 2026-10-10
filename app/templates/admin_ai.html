@@ -1,0 +1,198 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<div class="stack">
+  <div class="grid c4">
+    <div class="kpi"><div class="label">Active provider</div>
+      <div class="value" style="font-size:18px">{{ status.label if status.enabled else 'None' }}</div>
+      <div class="foot">{{ status.model if status.enabled else status.reason or 'rules only' }}</div></div>
+    <div class="kpi"><div class="label">Model inferences</div>
+      <div class="value">{{ by_source.model }}</div>
+      <div class="foot">{{ by_source.heuristic }} produced by rules</div></div>
+    <div class="kpi"><div class="label">Failed calls</div>
+      <div class="value {{ 'bad' if by_source.errors }}">{{ by_source.errors }}</div>
+      <div class="foot">each one fell back, none blocked an upload</div></div>
+    <div class="kpi"><div class="label">Configurations</div>
+      <div class="value">{{ configs|length }}</div>
+      <div class="foot">one active at a time</div></div>
+  </div>
+
+  {% if not status.enabled %}
+  <div class="flash info"><b>No provider is active, and everything still works.</b>
+    Classification, control summaries and questionnaire answers all fall back to deterministic
+    rules. Adding a provider improves fluency and extraction accuracy; it does not unlock
+    functionality that is otherwise missing.</div>
+  {% endif %}
+  {% if env_key_present %}
+  <div class="note">An <span class="mono">ANTHROPIC_API_KEY</span> is set in the environment.
+    A provider configured here takes precedence over it.</div>
+  {% endif %}
+
+  <div class="card"><header><h2>Configured providers</h2><span class="spacer"></span>
+    <span class="small muted">Keys are encrypted at rest and never shown again after saving</span></header>
+    {% if configs %}
+    <table>
+      <thead><tr><th>Provider</th><th>Model</th><th>Key</th><th>Last test</th>
+        <th>Usage</th><th>Data boundary</th><th></th></tr></thead>
+      <tbody>
+      {% for config in configs %}
+      <tr {% if config.enabled %}style="background:var(--steel-soft)"{% endif %}>
+        <td><b>{{ config.label }}</b>
+          <div class="small muted mono">{{ config.provider }}</div>
+          {% if config.enabled %}<span class="chip ok plain">active</span>{% endif %}</td>
+        <td class="small mono">{{ config.model or '—' }}
+          {% if config.base_url %}<div class="muted">{{ config.base_url|truncate(34) }}</div>{% endif %}</td>
+        <td class="small">
+          {% if config.api_key_mask %}
+            <span class="mono">{{ config.api_key_mask }}</span>
+            <div class="muted mono" title="SHA-256 prefix — identifies the key without revealing it">
+              fp {{ config.api_key_fingerprint }}</div>
+          {% else %}<span class="muted">none stored</span>{% endif %}</td>
+        <td class="small">
+          {% if config.last_tested_at %}
+            <span class="chip {{ 'ok' if config.last_test_ok else 'bad' }} plain">
+              {{ 'passed' if config.last_test_ok else 'failed' }}</span>
+            <div class="muted">{{ config.last_tested_at.strftime('%d %b %H:%M') }}
+              · {{ config.latency_ms }} ms</div>
+            <div class="muted">{{ config.last_test_detail|truncate(60) }}</div>
+          {% else %}<span class="chip neutral plain">never tested</span>{% endif %}</td>
+        <td class="small">{{ config.calls_made }} calls
+          <div class="muted">{{ '{:,}'.format(config.tokens_in) }} in ·
+            {{ '{:,}'.format(config.tokens_out) }} out</div></td>
+        <td class="small">
+          {% if config.data_boundary == 'self_hosted' %}<span class="chip ok plain">self-hosted</span>
+          {% else %}<span class="chip warn plain">third party</span>{% endif %}</td>
+        <td class="right nowrap">
+          <form method="post" action="/admin/ai/{{ config.id }}/test" style="display:inline">
+            <button class="btn small secondary" type="submit">Test</button></form>
+          <form method="post" action="/admin/ai/{{ config.id }}/enable" style="display:inline">
+            <button class="btn small {{ 'secondary' if config.enabled else '' }}" type="submit">
+              {{ 'Disable' if config.enabled else 'Enable' }}</button></form>
+          <form method="post" action="/admin/ai/{{ config.id }}/delete" style="display:inline">
+            <button class="btn small danger" type="submit">Delete</button></form>
+        </td>
+      </tr>
+      <tr><td colspan="7" style="padding-top:0">
+        <details><summary class="small muted" style="cursor:pointer">Edit {{ config.label }}</summary>
+          <form method="post" action="/admin/ai/{{ config.id }}/update" style="margin-top:10px">
+            <div class="field-row c3">
+              <div class="field"><label>Model or deployment</label>
+                <input name="model" value="{{ config.model }}"></div>
+              <div class="field"><label>Base URL</label>
+                <input name="base_url" value="{{ config.base_url or '' }}"></div>
+              <div class="field"><label>Max tokens</label>
+                <input name="max_tokens" type="number" value="{{ config.max_tokens }}"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Replace API key <span class="hint">leave blank to keep the current one</span></label>
+                <input name="api_key" type="password" autocomplete="off" placeholder="unchanged"></div>
+              <div class="field"><label>Data boundary</label>
+                <select name="data_boundary">
+                  <option value="third_party" {{ 'selected' if config.data_boundary == 'third_party' }}>Third-party API — a processor under Article 28</option>
+                  <option value="self_hosted" {{ 'selected' if config.data_boundary == 'self_hosted' }}>Self-hosted — stays inside our boundary</option>
+                </select></div>
+            </div>
+            <div class="field"><label>Notes</label>
+              <input name="notes" value="{{ config.notes or '' }}"
+                     placeholder="DPA reference, account owner, cost centre"></div>
+            <button class="btn small" type="submit">Save changes</button>
+          </form>
+        </details>
+      </td></tr>
+      {% endfor %}
+      </tbody></table>
+    {% else %}
+    <div class="table-empty">No provider configured. The AI features run on deterministic
+      rules until one is added.</div>
+    {% endif %}
+  </div>
+
+  <div class="grid sidebar-right">
+    <div class="card"><header><h2>Add a provider</h2></header><div class="body">
+      <form method="post" action="/admin/ai">
+        <div class="field-row">
+          <div class="field"><label for="provider">Provider</label>
+            <select id="provider" name="provider" required>
+              {% for key, meta in catalogue.items() %}
+              <option value="{{ key }}">{{ meta.label }}</option>
+              {% endfor %}
+            </select></div>
+          <div class="field"><label for="label">Label <span class="hint">how it appears here</span></label>
+            <input id="label" name="label" placeholder="Production — Anthropic"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label for="model">Model or deployment name</label>
+            <input id="model" name="model" placeholder="claude-sonnet-4-6"></div>
+          <div class="field"><label for="base_url">Base URL <span class="hint">blank uses the default</span></label>
+            <input id="base_url" name="base_url" placeholder="https://api.anthropic.com"></div>
+        </div>
+        <div class="field"><label for="api_key">API key</label>
+          <input id="api_key" name="api_key" type="password" autocomplete="off"
+                 placeholder="Pasted once — encrypted immediately, never displayed again"></div>
+        <div class="field-row">
+          <div class="field"><label for="max_tokens">Max tokens per call</label>
+            <input id="max_tokens" name="max_tokens" type="number" value="1500"></div>
+          <div class="field"><label for="data_boundary">Data boundary</label>
+            <select id="data_boundary" name="data_boundary">
+              <option value="third_party">Third-party API — a processor under Article 28</option>
+              <option value="self_hosted">Self-hosted — stays inside our boundary</option>
+            </select></div>
+        </div>
+        <div class="field"><label for="notes">Notes</label>
+          <input id="notes" name="notes" placeholder="DPA reference, account owner, cost centre"></div>
+        <div class="check"><input type="checkbox" id="enable" name="enable">
+          <label for="enable" style="margin:0">Make this the active provider once it tests clean</label></div>
+        <button class="btn" type="submit">Save and test</button>
+      </form>
+    </div></div>
+
+    <div class="stack">
+      <div class="card"><header><h3>Before you enable one</h3></header><div class="body">
+        <p class="small">A model provider reads document text, which makes them a
+          <b>processor under Article 28</b> for every tenant whose documents it touches.
+          Update the DPA, the subprocessor list and the transfer assessment before switching
+          one on — that is why this control sits with the platform operator and not with
+          individual suppliers.</p>
+        <p class="small muted" style="margin-top:8px">Special-category documents are excluded
+          from AI processing entirely, whichever provider is active.</p>
+        <p class="small muted" style="margin-top:8px">A self-hosted OpenAI-compatible endpoint
+          keeps document text inside your own boundary and removes the subprocessor question.</p>
+      </div></div>
+
+      <div class="card"><header><h3>How keys are held</h3></header><div class="body">
+        <dl class="dl small">
+          <dt>At rest</dt><dd>Encrypted with a key derived from SECRET_KEY</dd>
+          <dt>In the UI</dt><dd>Mask and fingerprint only, never the key</dd>
+          <dt>In the log</dt><dd>Fingerprint only, on every create, change and delete</dd>
+          <dt>On delete</dt><dd>Ciphertext destroyed with the row</dd>
+        </dl>
+        <div class="note warn" style="margin-top:10px">Rotating <span class="mono">SECRET_KEY</span>
+          makes every stored key unreadable. The provider will report a decryption failure and
+          fall back to rules until the key is re-entered.</div>
+        <p class="small muted" style="margin-top:8px">This protects a stolen database file or
+          backup. It does not protect against someone holding both the database and
+          SECRET_KEY — the application must be able to decrypt in order to make a call. A
+          production deployment stores these in a KMS and keeps only a reference here.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="card"><header><h2>Recent inferences</h2><span class="spacer"></span>
+    <span class="small muted">Every AI output is logged with its provenance</span></header>
+    {% if recent %}
+    <table><thead><tr><th>When</th><th>Entity</th><th>Kind</th><th>Source</th><th>Model</th>
+      <th class="num">Confidence</th><th class="num">Latency</th><th>Error</th></tr></thead><tbody>
+      {% for row in recent %}
+      <tr><td class="small nowrap">{{ row.created_at.strftime('%d %b %H:%M') }}</td>
+        <td class="small">{{ tenant_names.get(row.tenant_id, '—') }}</td>
+        <td class="small mono">{{ row.kind }}</td>
+        <td><span class="chip {{ 'info' if row.source == 'model' else 'neutral' }} plain">{{ row.source }}</span></td>
+        <td class="small mono">{{ row.model or '—' }}</td>
+        <td class="num small">{{ '%.2f'|format(row.confidence) }}</td>
+        <td class="num small">{{ row.latency_ms }} ms</td>
+        <td class="small muted">{{ row.error|truncate(40) if row.error else '' }}</td></tr>
+      {% endfor %}
+    </tbody></table>
+    {% else %}<div class="table-empty small">No inferences recorded yet.</div>{% endif %}
+  </div>
+</div>
+{% endblock %}

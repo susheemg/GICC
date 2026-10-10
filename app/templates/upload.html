@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="grid sidebar-right">
+  <div class="stack">
+    {% if not proposal %}
+    <div class="card"><header><h2>Drop a certificate in and we will work out what it is</h2></header>
+      <div class="body">
+        <form method="post" action="/documents/upload" enctype="multipart/form-data">
+          <div class="field"><label for="file">Certificate, policy or report</label>
+            <input id="file" name="file" type="file" required
+                   accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.txt,.md,.csv"></div>
+          <button class="btn" type="submit">Upload and classify</button>
+          <a class="btn secondary" href="/documents/catalogue">Pick the type myself</a>
+        </form>
+        <p class="small muted" style="margin-top:12px">Text is read from PDFs and Office
+          files locally. Nothing is filed until you confirm the proposal.</p>
+      </div>
+    </div>
+    {% else %}
+    <div class="card">
+      <header><h2>Confirm before this is filed</h2><span class="spacer"></span>
+        <span class="chip {{ 'info' if proposal.source == 'model' else 'neutral' }}">
+          {{ 'model proposal' if proposal.source == 'model' else 'no model key — rules only' }}</span>
+      </header>
+      <div class="body">
+        {% if proposal.type_code %}
+        <div class="split" style="margin-bottom:12px">
+          <b style="font-size:16px">{{ proposal.type_name }}</b>
+          <span class="chip {{ 'ok' if proposal.confidence >= 0.7 else ('warn' if proposal.confidence >= 0.4 else 'bad') }}">
+            {{ (proposal.confidence * 100)|round|int }}% confidence</span>
+          <span class="mono small muted">{{ proposal.type_code }}</span>
+        </div>
+        <p class="small muted">{{ proposal.rationale }}</p>
+        {% else %}
+        <div class="flash warn">We could not match this to a catalogue type. Choose one below.</div>
+        {% endif %}
+
+        {% if proposal.existing_document_id %}
+        <div class="note" style="margin-bottom:14px">You already hold this type. Saving will
+          create a <b>new version</b> and supersede the current one, rather than a duplicate.</div>
+        {% endif %}
+
+        <form method="post" action="/documents/upload/confirm">
+          <input type="hidden" name="file_path" value="{{ proposal.file_path }}">
+          <input type="hidden" name="filename" value="{{ proposal.filename }}">
+          <input type="hidden" name="digest" value="{{ proposal.digest }}">
+          <input type="hidden" name="size" value="{{ proposal.size }}">
+          <input type="hidden" name="mime" value="{{ proposal.mime or '' }}">
+
+          <div class="field"><label for="type_code">Document type</label>
+            <select id="type_code" name="type_code" required>
+              {% if proposal.type_code %}
+              <option value="{{ proposal.type_code }}">{{ proposal.type_code }} — {{ proposal.type_name }} (proposed)</option>
+              {% endif %}
+              {% for alt in proposal.alternatives %}
+              <option value="{{ alt.code }}">{{ alt.code }} — {{ alt.name }} ({{ (alt.confidence * 100)|round|int }}%)</option>
+              {% endfor %}
+            </select>
+            {% if not proposal.type_code and not proposal.alternatives %}
+            <p class="small muted" style="margin-top:6px">No candidates.
+              <a href="/documents/catalogue">Browse the full catalogue</a> instead.</p>
+            {% endif %}
+          </div>
+
+          <div class="field-row c3">
+            <div class="field"><label for="issue_date">Issued</label>
+              <input id="issue_date" name="issue_date" type="date" value="{{ proposal.fields.issue_date or '' }}"></div>
+            <div class="field"><label for="expiry_date">Expires</label>
+              <input id="expiry_date" name="expiry_date" type="date" value="{{ proposal.fields.expiry_date or '' }}"></div>
+            <div class="field"><label for="cover_amount">Cover amount</label>
+              <input id="cover_amount" name="cover_amount" value="{{ proposal.fields.cover_amount or '' }}"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label for="certificate_number">Certificate number</label>
+              <input id="certificate_number" name="certificate_number" value="{{ proposal.fields.certificate_number or '' }}"></div>
+            <div class="field"><label for="issuer_name">Issuing authority</label>
+              <input id="issuer_name" name="issuer_name" value="{{ proposal.fields.issuer_name or '' }}"></div>
+          </div>
+          <div class="field"><label for="holder_name">Named holder</label>
+            <input id="holder_name" name="holder_name" value="{{ proposal.fields.holder_name or tenant.name }}"></div>
+          <div class="field"><label for="scope_statement">Scope</label>
+            <textarea id="scope_statement" name="scope_statement">{{ proposal.fields.scope_statement or '' }}</textarea></div>
+          <div class="field"><label for="verification_url">Authentication link</label>
+            <input id="verification_url" name="verification_url" type="url"></div>
+          <button class="btn" type="submit">File it</button>
+          <a class="btn secondary" href="/documents/upload">Start again</a>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    <div class="card"><header><h3>How this works</h3></header><div class="body">
+      <p class="small">Text is pulled from the file, matched against the 182-type catalogue,
+        and the dates and numbers on it are proposed for the form. <b>Nothing is stored as
+        fact until you confirm it</b>, and a field the engine is unsure about is left blank
+        rather than guessed.</p>
+      <p class="small muted" style="margin-top:10px">Classification never sets an assurance
+        level. That still comes only from verification against the issuing source.</p>
+      <dl class="dl small" style="margin-top:12px">
+        <dt>Engine</dt><dd>{{ 'Model — ' ~ ai_status.model if ai_status.enabled else 'Deterministic rules' }}</dd>
+        <dt>Fallback</dt><dd>{{ ai_status.fallback }}</dd>
+        {% if proposal %}<dt>Text read</dt>
+          <dd>{{ proposal.text_chars }} characters via {{ proposal.text_method }}</dd>{% endif %}
+      </dl>
+    </div></div>
+    {% if not ai_status.enabled %}
+    <div class="note warn">No model key is set, so classification runs on keyword rules.
+      Set <span class="mono">ANTHROPIC_API_KEY</span> to switch the model path on — nothing
+      else changes.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

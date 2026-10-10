@@ -1,0 +1,40 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in · Trusted Supplier Program</title><link rel="stylesheet" href="/static/css/brata.css"></head><body>
+<div class="auth-wrap">
+  <div class="auth-left">
+    <div>
+      <div style="font-size:17px;font-weight:600;display:flex;align-items:center;gap:8px">
+        <span style="width:9px;height:9px;background:#3E6FB0;display:inline-block"></span> Trusted Supplier Program</div>
+      <div style="font-size:11px;color:#8EA3C4;letter-spacing:.04em;text-transform:uppercase;margin-top:3px">
+        Trusted Supplier Program</div>
+      <p class="lede" style="margin-top:40px">Prove your company once. Share it with every buyer who asks.</p>
+      <ul>
+        <li><b>L0</b> Uploaded, nothing checked</li>
+        <li><b>L1</b> Issuing-authority link recorded and resolving</li>
+        <li><b>L2</b> Confirmed by a reviewer against the source</li>
+        <li><b>L3</b> Matched automatically against an authoritative register</li>
+        <li><b>L4</b> Cryptographically verifiable credential or seal</li>
+      </ul>
+      <p style="color:#8EA3C4;font-size:12.5px;margin-top:18px">
+        Every credential carries the level its evidence supports — no more, no less.</p>
+    </div>
+    <div style="font-size:11.5px;color:#6F84A8">Buyers can reach a shared pack without an account.</div>
+  </div>
+  <div class="auth-right"><div class="auth-card">
+    <h1>Sign in</h1>
+    <p class="muted" style="margin-bottom:18px">Use your work email.</p>
+    {% for category, message in flashes %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}
+    <form method="post" action="/login">
+      <div class="field"><label for="email">Email</label>
+        <input id="email" name="email" type="email" required autofocus value="{{ demo_email or '' }}"></div>
+      <div class="field"><label for="password">Password</label>
+        <input id="password" name="password" type="password" required value="{{ demo_password or '' }}"></div>
+      <button class="btn" type="submit" style="width:100%;justify-content:center">Sign in</button>
+    </form>
+    {% if demo_email %}<div class="note" style="margin-top:16px">
+      A worked example is loaded: <b>{{ demo_email }}</b> / <b>{{ demo_password }}</b> —
+      Northgate Data Systems, 22 credentials, three clients, live grants.</div>{% endif %}
+    <p class="small muted" style="margin-top:18px">No workspace yet? <a href="/register/buyer">Register as a buyer</a> · <a href="/register">Register your company</a>.</p>
+  </div></div>
+</div></body></html>

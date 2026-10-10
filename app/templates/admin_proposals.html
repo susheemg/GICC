@@ -1,0 +1,86 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<div class="card">
+  <h2>Document type proposals</h2>
+  <p class="muted">The catalogue code is the join key for requirement profiles, the
+  Trust Index, gap ranking and buyer matching. Auto-creating global types would
+  produce hundreds of near-duplicates and every one of those features would
+  quietly stop matching. Promotion is a decision a named person makes.</p>
+  <div class="split wrap">
+    {% for s in ['proposed', 'promoted', 'merged', 'rejected'] %}
+    <a class="pill-filter {{ 'active' if status == s }}" href="/admin/proposals?status={{ s }}">{{ s }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+{% for r in rows %}
+<div class="card">
+  <div class="split">
+    <div>
+      <h3>{{ r.proposal.proposed_name }}</h3>
+      <div class="muted small">
+        Local type <span class="mono">{{ r.proposal.created_type_code }}</span> ·
+        {{ r.tenant.name if r.tenant else 'unknown tenant' }} ·
+        {{ r.proposal.source }} · similarity {{ (r.proposal.similarity * 100)|round|int }}%
+      </div>
+    </div>
+    <div class="spacer"></div>
+    {% if r.proposal.occurrences > 1 %}
+    <span class="pill warn">{{ r.proposal.occurrences }} tenants proposed this</span>
+    {% endif %}
+  </div>
+
+  {% if r.proposal.rationale %}<p class="small muted">{{ r.proposal.rationale }}</p>{% endif %}
+  {% if r.nearest %}
+  <div class="callout warn small">Nearest existing type:
+    <span class="mono">{{ r.nearest.code }}</span> {{ r.nearest.name }} — if this is
+    really the same thing, merge rather than promote.</div>
+  {% endif %}
+
+  {% if r.proposal.status == 'proposed' %}
+  <div class="split wrap">
+    <form method="post" action="/admin/proposals/{{ r.proposal.id }}/promote" class="stack" style="flex:2">
+      <strong class="small">Promote to the global catalogue</strong>
+      <input type="text" name="name" value="{{ r.proposal.proposed_name }}" placeholder="Catalogue name">
+      <input type="text" name="domain" value="{{ r.proposal.proposed_domain }}" placeholder="Domain" maxlength="3">
+      <input type="text" name="typical_issuer" placeholder="Typical issuer">
+      <input type="text" name="validity_months" placeholder="Validity in months (blank if variable)">
+      <select name="sensitivity">
+        <option value="P">Public</option><option value="R" selected>Restricted</option>
+        <option value="C">Confidential</option></select>
+      <select name="criticality">
+        {% for c in [1,2,3,4,5] %}<option value="{{ c }}" {{ 'selected' if c == 3 }}>Criticality {{ c }}</option>{% endfor %}</select>
+      <select name="verification_route">
+        <option value="manual">Manual</option><option value="certsearch">Certificate search</option>
+        <option value="issuer_portal">Issuer portal</option><option value="registry_api">Registry API</option></select>
+      <label class="small"><input type="checkbox" name="multi_instance"> Binds to an asset (resolves to a set)</label>
+      <button class="btn" type="submit">Promote</button>
+    </form>
+
+    <form method="post" action="/admin/proposals/{{ r.proposal.id }}/merge" class="stack" style="flex:1">
+      <strong class="small">Merge into an existing type</strong>
+      <input type="text" name="target_code" placeholder="e.g. INS-003" required
+             value="{{ r.proposal.nearest_type_code or '' }}">
+      <input type="text" name="note" placeholder="Note">
+      <button class="btn ghost" type="submit">Merge</button>
+    </form>
+
+    <form method="post" action="/admin/proposals/{{ r.proposal.id }}/reject" class="stack" style="flex:1">
+      <strong class="small">Keep local only</strong>
+      <input type="text" name="note" placeholder="Reason">
+      <button class="btn ghost" type="submit">Reject</button>
+    </form>
+  </div>
+  {% else %}
+  <div class="muted small">{{ r.proposal.status }}
+    {% if r.proposal.resulting_type_code %}as <span class="mono">{{ r.proposal.resulting_type_code }}</span>{% endif %}
+    {% if r.proposal.merged_into_code %}into <span class="mono">{{ r.proposal.merged_into_code }}</span>{% endif %}
+    · {{ r.proposal.reviewed_by }} · {{ r.proposal.reviewed_at.strftime('%d %b %Y') if r.proposal.reviewed_at else '' }}
+    {% if r.proposal.review_note %}<div>{{ r.proposal.review_note }}</div>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% else %}
+<div class="card"><p class="table-empty">Nothing in this queue.</p></div>
+{% endfor %}
+{% endblock %}

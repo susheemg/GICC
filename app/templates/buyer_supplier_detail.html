@@ -1,0 +1,104 @@
+{% extends "buyer_base.html" %}
+{% block content %}
+<div class="card">
+  <div class="split">
+    <div>
+      <h2>{{ entry.legal_name }}</h2>
+      <div class="muted small">
+        {{ link.internal_reference or 'no internal reference' }} ·
+        {{ link.category or 'uncategorised' }} · criticality {{ link.criticality }}</div>
+    </div>
+    <div class="spacer"></div>
+    <span class="pill {{ 'good' if state == 'connected' else 'warn' if state == 'requested' else 'muted' }}">{{ state }}</span>
+  </div>
+</div>
+
+{% if state == 'invited' %}
+<div class="card">
+  <div class="callout warn">
+    <strong>This company has not claimed a workspace.</strong> There is nobody to
+    receive a request for records. Send them <span class="mono">/claim</span> — they
+    search for themselves, prove the company is theirs, and this entry becomes their
+    workspace.
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <h3>Identity</h3>
+  {% include "_buyer_fields.html" %}
+  {% if public_slug %}
+  <p class="small muted">Public credential page: <a href="/t/{{ public_slug }}">/t/{{ public_slug }}</a></p>
+  {% endif %}
+</div>
+
+{% if documents %}
+<div class="card">
+  <h3>Records shared with you</h3>
+  <table class="table">
+    <thead><tr><th>Type</th><th>Credential</th><th>Assurance</th><th>Status</th>
+      <th>Expires</th></tr></thead>
+    <tbody>
+    {% for d in documents %}
+      <tr>
+        <td class="mono small">{{ d.type.code }}</td>
+        <td><a href="/buyer/documents/{{ d.document.id }}">{{ d.document.title }}</a></td>
+        <td>{% if d.version %}<span class="pill">{{ d.version.assurance_level }}</span>{% endif %}</td>
+        <td><span class="pill {{ 'good' if d.document.derived_status == 'valid' else 'warn' if d.document.derived_status == 'expiring_soon' else 'bad' }}">{{ d.document.derived_status.replace('_', ' ') }}</span></td>
+        <td class="small">{{ d.version.expiry_date.strftime('%d %b %Y') if d.version and d.version.expiry_date else '—' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="small muted">The supplier controls this. They can narrow or withdraw it at
+  any time, and the assurance level shown is the one their evidence supports.</p>
+</div>
+{% endif %}
+
+{% if state in ['watching', 'connected'] %}
+<div class="card">
+  <h3>{{ 'Request more' if state == 'connected' else 'Request access to their records' }}</h3>
+  <form method="post" action="/buyer/suppliers/{{ link.id }}/request" class="stack">
+    <textarea name="purpose" rows="3" required
+      placeholder="Why you need it — e.g. annual supplier review for the 2027 framework, or onboarding for the Northgate contract"></textarea>
+    <button class="btn" type="submit">Send request</button>
+  </form>
+  <p class="small muted">{{ entry.legal_name }} sees your company name, your email and
+  this purpose. They decide the scope and how long it lasts.</p>
+</div>
+{% elif state == 'requested' %}
+<div class="card">
+  <div class="callout warn">A request is open with {{ entry.legal_name }}. They have two
+  business days to respond.</div>
+</div>
+{% endif %}
+
+<div class="card">
+  <h3>Request history</h3>
+  <table class="table">
+    <thead><tr><th>Raised</th><th>Purpose</th><th>Status</th><th>Decided</th>
+      <th>Reason given</th></tr></thead>
+    <tbody>
+    {% for r in history %}
+      <tr>
+        <td class="small">{{ r.created_at.strftime('%d %b %Y') }}</td>
+        <td class="small muted">{{ r.purpose or '—' }}</td>
+        <td><span class="pill {{ 'good' if r.status == 'approved' else 'bad' if r.status == 'denied' else 'warn' }}">{{ r.status }}</span></td>
+        <td class="small">{{ r.decided_at.strftime('%d %b %Y') if r.decided_at else '—' }}</td>
+        <td class="small muted">{{ r.decision_note or '—' }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="table-empty">No requests yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <form method="post" action="/buyer/suppliers/{{ link.id }}/remove"
+        onsubmit="return confirm('Remove {{ entry.legal_name }} from your supply base?')">
+    <button class="btn ghost">Remove from my suppliers</button></form>
+  <p class="small muted">Removing them here does not revoke anything they shared —
+  that stays with the supplier, which is the point.</p>
+</div>
+{% endblock %}
